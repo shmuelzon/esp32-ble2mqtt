@@ -1,0 +1,12 @@
+# Outputs
+build/
+
+# Local files
+sdkconfig
+sdkconfig.old
+log.txt
+
+# General
+*.swp
+*.swo
+tags

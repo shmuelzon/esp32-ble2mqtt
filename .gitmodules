@@ -1,0 +1,3 @@
+[submodule "components/esp-mqtt"]
+	path = components/esp-mqtt
+	url = https://github.com/256dpi/esp-mqtt.git
