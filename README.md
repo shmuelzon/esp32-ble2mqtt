@@ -22,6 +22,18 @@ In order to set a GATT value, publish a message to a writable characteristic
 using the above format suffixed with `/Set`. Again, data is raw and not
 converted to a string.
 
+## Compiling
+
+Download the repository and its dependencies:
+```bash
+git clone --recursive https://github.com/shmuelzon/esp32-ble2mqtt
+```
+Modify the [configuration file](#configuration) to fit your environment, build
+and flash (make sure to modify the serial device your ESP32 is connected to):
+```bash
+make flash
+```
+
 ## Configuration
 
 The configuration file provided in located at
