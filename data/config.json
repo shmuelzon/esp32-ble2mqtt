@@ -1,0 +1,15 @@
+{
+  "wifi": {
+    "ssid": "MY_SSID",
+    "password": "MY_PASSWORD"
+  },
+  "mqtt": {
+    "server": {
+      "host": "192.168.1.1",
+      "port": 1883
+    },
+    "publish": {
+      "retain": true
+    }
+  }
+}
