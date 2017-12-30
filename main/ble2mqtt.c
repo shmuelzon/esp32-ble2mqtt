@@ -220,20 +220,20 @@ void app_main()
     ESP_ERROR_CHECK(ret);
 
     /* Init configuration */
-    config_initialize();
+    ESP_ERROR_CHECK(config_initialize());
 
     /* Init Wi-Fi */
-    wifi_initialize();
+    ESP_ERROR_CHECK(wifi_initialize());
     wifi_set_on_connected_cb(wifi_on_connected);
     wifi_set_on_disconnected_cb(wifi_on_disconnected);
 
     /* Init MQTT */
-    mqtt_initialize();
+    ESP_ERROR_CHECK(mqtt_initialize());
     mqtt_set_on_connected_cb(mqtt_on_connected);
     mqtt_set_on_disconnected_cb(mqtt_on_disconnected);
 
     /* Init BLE */
-    ble_initialize();
+    ESP_ERROR_CHECK(ble_initialize());
     ble_set_on_device_discovered_cb(ble_on_device_discovered);
     ble_set_on_device_connected_cb(ble_on_device_connected);
     ble_set_on_device_disconnected_cb(ble_on_device_disconnected);
