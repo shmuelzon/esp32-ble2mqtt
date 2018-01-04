@@ -244,6 +244,9 @@ int ble_characteristic_read(mac_addr_t mac, ble_uuid_t service_uuid,
         return -1;
     }
 
+    if (!(characteristic->properties & CHAR_PROP_READ))
+        return -1;
+
     return esp_ble_gattc_read_char(g_gattc_if, device->conn_id,
         characteristic->handle, ESP_GATT_AUTH_REQ_NONE);
 }
@@ -266,6 +269,9 @@ int ble_characteristic_write(mac_addr_t mac, ble_uuid_t service_uuid,
     {
         return -1;
     }
+
+    if (!(characteristic->properties & CHAR_PROP_WRITE))
+        return -1;
 
     return esp_ble_gattc_write_char(g_gattc_if, device->conn_id,
         characteristic->handle, value_len, (uint8_t *)value,
@@ -291,6 +297,9 @@ int ble_characteristic_notify_register(mac_addr_t mac, ble_uuid_t service_uuid,
     {
         return -1;
     }
+
+    if (!(characteristic->properties & CHAR_PROP_NOTIFY))
+        return -1;
 
     if (characteristic->client_config_handle == 0)
         return -1;
