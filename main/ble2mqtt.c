@@ -164,6 +164,9 @@ static void ble_on_mqtt_set(const char *topic, const uint8_t *payload,
         return;
 
     ble_characteristic_write(mac, service, characteristic, payload, len);
+
+    /* Issue a read request to get latest value */
+    ble_characteristic_read(mac, service, characteristic);
 }
 
 static void ble_on_characteristic_found(mac_addr_t mac, ble_uuid_t service_uuid,
