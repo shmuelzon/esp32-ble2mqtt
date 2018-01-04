@@ -151,6 +151,7 @@ static void ble_update_cache(ble_device_t *dev)
 {
     esp_gattc_db_elem_t *db;
     ble_service_t *service = NULL;
+    ble_characteristic_t *characteristic = NULL;
     ble_uuid_t service_uuid, characteristic_uuid;
     uint16_t count, i;
 
@@ -184,8 +185,14 @@ static void ble_update_cache(ble_device_t *dev)
         else if (db[i].type == ESP_GATT_DB_CHARACTERISTIC)
         {
             esp_uuid_to_bt_uuid(db[i].uuid, characteristic_uuid);
-            ble_device_characteristic_add(service, characteristic_uuid,
-                db[i].attribute_handle, db[i].properties);
+            characteristic = ble_device_characteristic_add(service,
+                characteristic_uuid, db[i].attribute_handle, db[i].properties);
+        }
+        else if (db[i].type == ESP_GATT_DB_DESCRIPTOR &&
+            db[i].uuid.len == ESP_UUID_LEN_16 &&
+            db[i].uuid.uuid.uuid16 == ESP_GATT_UUID_CHAR_CLIENT_CONFIG)
+        {
+            characteristic->client_config_handle = db[i].attribute_handle;
         }
     }
     free(db);
@@ -268,6 +275,7 @@ int ble_characteristic_write(mac_addr_t mac, ble_uuid_t service_uuid,
 int ble_characteristic_notify_register(mac_addr_t mac, ble_uuid_t service_uuid,
     ble_uuid_t characteristic_uuid)
 {
+    uint16_t notify_en = 1;
     ble_device_t *device;
     ble_service_t *service;
     ble_characteristic_t *characteristic;
@@ -284,8 +292,18 @@ int ble_characteristic_notify_register(mac_addr_t mac, ble_uuid_t service_uuid,
         return -1;
     }
 
-    return esp_ble_gattc_register_for_notify(g_gattc_if, device->mac,
-        characteristic->handle);
+    if (characteristic->client_config_handle == 0)
+        return -1;
+
+    if (esp_ble_gattc_register_for_notify(g_gattc_if, device->mac,
+        characteristic->handle))
+    {
+        return -1;
+    }
+
+    return esp_ble_gattc_write_char_descr(g_gattc_if, device->conn_id,
+        characteristic->client_config_handle, sizeof(notify_en),
+        (uint8_t *)&notify_en, ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
 }
 
 int ble_characteristic_notify_unregister(mac_addr_t mac,

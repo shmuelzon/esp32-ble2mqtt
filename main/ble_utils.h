@@ -11,6 +11,7 @@ typedef struct ble_characteristic_t {
     ble_uuid_t uuid;
     uint16_t handle;
     uint8_t properties;
+    uint16_t client_config_handle;
 } ble_characteristic_t;
 
 typedef struct ble_service_t {

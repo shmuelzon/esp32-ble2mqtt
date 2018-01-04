@@ -291,6 +291,7 @@ ble_characteristic_t *ble_device_characteristic_add(ble_service_t *service,
     memcpy(characteristic->uuid, uuid, sizeof(ble_uuid_t));
     characteristic->handle = handle;
     characteristic->properties = properties;
+    characteristic->client_config_handle = 0;
 
     for (cur = &service->characteristics; *cur; cur = &(*cur)->next);
     *cur = characteristic;
