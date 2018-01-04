@@ -288,6 +288,29 @@ int ble_characteristic_notify_register(mac_addr_t mac, ble_uuid_t service_uuid,
         characteristic->handle);
 }
 
+int ble_characteristic_notify_unregister(mac_addr_t mac,
+    ble_uuid_t service_uuid, ble_uuid_t characteristic_uuid)
+{
+    ble_device_t *device;
+    ble_service_t *service;
+    ble_characteristic_t *characteristic;
+
+    if (!(device = ble_device_find_by_mac(devices_list, mac)))
+        return -1;
+
+    if (!(service = ble_device_service_find(device, service_uuid)))
+        return -1;
+
+    if (!(characteristic = ble_device_characteristic_find_by_uuid(service,
+        characteristic_uuid)))
+    {
+        return -1;
+    }
+
+    return esp_ble_gattc_unregister_for_notify(g_gattc_if, device->mac,
+        characteristic->handle);
+}
+
 static void gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
     ESP_LOGD(TAG, "Received GAP event %d (%s)", event, gap_event_to_str(event));

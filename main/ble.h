@@ -57,6 +57,8 @@ int ble_characteristic_write(mac_addr_t mac, ble_uuid_t service_uuid,
     ble_uuid_t characteristic_uuid, const uint8_t *value, size_t value_len);
 int ble_characteristic_notify_register(mac_addr_t mac, ble_uuid_t service_uuid,
     ble_uuid_t characteristic_uuid);
+int ble_characteristic_notify_unregister(mac_addr_t mac,
+    ble_uuid_t service_uuid, ble_uuid_t characteristic_uuid);
 
 int ble_initialize(void);
 
