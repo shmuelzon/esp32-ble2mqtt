@@ -10,9 +10,42 @@
 
 /* Constants */
 static const char *TAG = "Config";
-static cJSON *config = NULL;
+static cJSON *config, *services, *characteristics;
 
 /* BLE Configuration*/
+static const char *config_ble_get_name_by_uuid(uint8_t is_service,
+    const char *uuid)
+{
+    cJSON *ble = cJSON_GetObjectItemCaseSensitive(config, "ble");
+    cJSON *list = cJSON_GetObjectItemCaseSensitive(ble,
+        is_service ?  "services" : "characteristics");
+
+    /* Check config.json for override values */
+    cJSON *name = cJSON_GetObjectItemCaseSensitive(list, uuid);
+
+    if (cJSON_IsString(name))
+        return name->valuestring;
+
+    /* Check list for SIG values */
+    name = cJSON_GetObjectItemCaseSensitive(is_service ? services :
+        characteristics, uuid);
+
+    if (cJSON_IsString(name))
+        return name->valuestring;
+
+    return uuid;
+}
+
+const char *config_ble_service_name_get(const char *uuid)
+{
+    return config_ble_get_name_by_uuid(1, uuid);
+}
+
+const char *config_ble_characteristic_name_get(const char *uuid)
+{
+    return config_ble_get_name_by_uuid(0, uuid);
+}
+
 cJSON *json_find_in_array(cJSON *arr, const char *item)
 {
     cJSON *cur;
@@ -152,7 +185,7 @@ static char *read_file(const char *path)
 {
     int fd, len;
     struct stat st;
-    char *buf;
+    char *buf, *p;
 
     if (stat(path, &st))
         return NULL;
@@ -160,10 +193,11 @@ static char *read_file(const char *path)
     if ((fd = open(path, O_RDONLY)) < 0)
         return NULL;
 
-    if (!(buf = malloc(st.st_size + 1)))
+    if (!(buf = p = malloc(st.st_size + 1)))
         return NULL;
 
-    len = read(fd, buf, 1024);
+    while ((len = read(fd, p, 1024)) > 0)
+        p += len;
     close(fd);
 
     if (len < 0)
@@ -172,7 +206,7 @@ static char *read_file(const char *path)
         return NULL;
     }
 
-    buf[len] = '\0';
+    *p = '\0';
     return buf;
 }
 
@@ -204,6 +238,12 @@ int config_initialize(void)
 
     /* Load config.json from SPIFFS */
     if (!(config = load_json("/spiffs/config.json")))
+        return -1;
+    /* Load services.json from SPIFFS */
+    if (!(services = load_json("/spiffs/services.json")))
+        return -1;
+    /* Load characteristics.json from SPIFFS */
+    if (!(characteristics = load_json("/spiffs/characteristics.json")))
         return -1;
 
     return 0;

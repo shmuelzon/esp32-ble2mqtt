@@ -9,8 +9,8 @@ For example, if a device with a MAC address of `a0:e6:f8:50:72:53` exposes the
 [0000180f-0000-1000-8000-00805f9b34fb service](https://developer.bluetooth.org/gatt/services/Pages/ServiceViewer.aspx?u=org.bluetooth.service.battery_service.xml)
 (Battery Service) which includes the
 [00002a19-0000-1000-8000-00805f9b34fb characteristic](https://developer.bluetooth.org/gatt/characteristics/Pages/CharacteristicViewer.aspx?u=org.bluetooth.characteristic.battery_level.xml)
-(Battery Level), the `a0:e6:f8:50:72:53/0000180f-0000-1000-8000-00805f9b34fb/00002a19-0000-1000-8000-00805f9b34fb`
-MQTT topic is published with a value representing the battery level.
+(Battery Level), the `a0:e6:f8:50:72:53/BatteryService/BatteryLevel` MQTT topic
+is published with a value representing the battery level.
 
 Characteristics supporting notifications will automatically be registered on and
 new values will be published once available. It's also possible to proactively
@@ -87,7 +87,9 @@ configuration:
 ```json
 {
   "ble": {
-    "//Optional: 'whitelist' or 'blacklist'": []
+    "//Optional: 'whitelist' or 'blacklist'": [],
+    "services": {},
+    "characteristics": {}
   }
 }
 ```
@@ -100,4 +102,24 @@ configuration:
     "whitelist": [
       "aa:bb:cc:dd:ee:ff"
     ]
+    ```
+* `services` - add an additional service or override an existing definition to
+  the ones grabbed automatically during build from http://www.bluetooth.org.
+  The value of each service is its name which will be used in the MQTT topic
+  instead of its UUID. For example:
+
+    ```json
+    "services": {
+      "00002f00-0000-1000-8000-00805f9b34fb": "RelayService"
+    }
+    ```
+* `characteristics` - add an additional characteristic or override an existing
+  definition to the ones grabbed automatically during build from
+  http://www.bluetooth.org. The value of each service is its name which will be
+  used in the MQTT topic instead of its UUID. For example:
+
+    ```json
+    "characteristics": {
+      "00002f01-0000-1000-8000-00805f9b34fb": "RelayState"
+    }
     ```

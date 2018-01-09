@@ -12,6 +12,8 @@ typedef struct mqtt_subscription_t {
     struct mqtt_subscription_t *next;
     char *topic;
     mqtt_on_message_received_cb_t cb;
+    void *ctx;
+    mqtt_free_ctx_cb_t free_cb;
 } mqtt_subscription_t;
 
 /* Internal state */
@@ -32,7 +34,8 @@ void mqtt_set_on_disconnected_cb(mqtt_on_disconnected_cb_t cb)
 }
 
 static mqtt_subscription_t *mqtt_subscription_add(mqtt_subscription_t **list,
-    const char *topic, mqtt_on_message_received_cb_t cb)
+    const char *topic, mqtt_on_message_received_cb_t cb, void *ctx,
+    mqtt_free_ctx_cb_t free_cb)
 {
     mqtt_subscription_t *sub, **cur;
 
@@ -40,6 +43,8 @@ static mqtt_subscription_t *mqtt_subscription_add(mqtt_subscription_t **list,
     sub->next = NULL;
     sub->topic = strdup(topic);
     sub->cb = cb;
+    sub->ctx = ctx;
+    sub->free_cb = free_cb;
 
     for (cur = list; *cur; cur = &(*cur)->next);
     *cur = sub;
@@ -49,6 +54,8 @@ static mqtt_subscription_t *mqtt_subscription_add(mqtt_subscription_t **list,
 
 static void mqtt_subscription_free(mqtt_subscription_t *mqtt_subscription)
 {
+    if (mqtt_subscription->ctx && mqtt_subscription->free_cb)
+        mqtt_subscription->free_cb(mqtt_subscription->ctx);
     free(mqtt_subscription->topic);
     free(mqtt_subscription);
 }
@@ -86,11 +93,11 @@ static void mqtt_subscription_remove(mqtt_subscription_t **list,
     mqtt_subscription_free(tmp);
 }
 
-int mqtt_subscribe(const char *topic, int qos,
-    mqtt_on_message_received_cb_t cb)
+int mqtt_subscribe(const char *topic, int qos, mqtt_on_message_received_cb_t cb,
+    void *ctx, mqtt_free_ctx_cb_t free_cb)
 {
     ESP_LOGD(TAG, "Subscribing to %s", topic);
-    mqtt_subscription_add(&subscription_list, topic, cb);
+    mqtt_subscription_add(&subscription_list, topic, cb, ctx, free_cb);
     return esp_mqtt_subscribe(topic, qos) != true;
 }
 
@@ -158,7 +165,7 @@ static void mqtt_message_cb(const char *topic, uint8_t *payload, size_t len)
         if (strcmp(cur->topic, topic))
             continue;
 
-        cur->cb(topic, payload, len);
+        cur->cb(topic, payload, len, cur->ctx);
     }
 }
 

@@ -1,5 +1,7 @@
 # Outputs
 build/
+data/services.json
+data/characteristics.json
 
 # Local files
 sdkconfig

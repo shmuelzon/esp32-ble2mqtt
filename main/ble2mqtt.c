@@ -12,6 +12,12 @@
 #define MAX_TOPIC_LEN 256
 static const char *TAG = "BLE2MQTT";
 
+typedef struct {
+    mac_addr_t mac;
+    ble_uuid_t service;
+    ble_uuid_t characteristic;
+} mqtt_ctx_t;
+
 /* Wi-Fi callback functions */
 static void wifi_on_connected(void)
 {
@@ -54,6 +60,18 @@ static void ble_publish_connected(mac_addr_t mac, uint8_t is_connected)
         config_mqtt_retained_get());
 }
 
+static mqtt_ctx_t *ble_ctx_gen(mac_addr_t mac, ble_uuid_t service,
+    ble_uuid_t characteristic)
+{
+    mqtt_ctx_t *ctx = malloc(sizeof(mqtt_ctx_t));
+
+    memcpy(ctx->mac, mac, sizeof(mac_addr_t));
+    memcpy(ctx->service, service, sizeof(ble_uuid_t));
+    memcpy(ctx->characteristic, characteristic, sizeof(ble_uuid_t));
+
+    return ctx;
+}
+
 /* BLE callback functions */
 static void ble_on_device_discovered(mac_addr_t mac)
 {
@@ -91,8 +109,10 @@ static char *ble_topic(mac_addr_t mac, ble_uuid_t service_uuid,
     static char topic[MAX_TOPIC_LEN];
     int i;
 
-    i = sprintf(topic, "%s/%s", mactoa(mac), uuidtoa(service_uuid));
-    sprintf(topic + i, "/%s", uuidtoa(characteristic_uuid));
+    i = sprintf(topic, "%s/%s", mactoa(mac),
+        config_ble_service_name_get(uuidtoa(service_uuid)));
+    sprintf(topic + i, "/%s",
+        config_ble_characteristic_name_get(uuidtoa(characteristic_uuid)));
 
     return topic;
 }
@@ -122,51 +142,26 @@ static void ble_on_device_disconnected(mac_addr_t mac)
     ble_foreach_characteristic(mac, ble_on_characteristic_removed);
 }
 
-static int ble_split_topic(const char *topic, mac_addr_t mac, ble_uuid_t service,
-    ble_uuid_t characteristic)
-{
-    char *s = strdup(topic);
-    const char *mac_str, *service_str, *characteristic_str;
-    int ret;
-
-    mac_str = strtok(s, "/");
-    service_str = strtok(NULL, "/");
-    characteristic_str = strtok(NULL, "/");
-
-    ret = atomac(mac_str, mac) || atouuid(service_str, service) ||
-        atouuid(characteristic_str, characteristic);
-
-    free(s);
-    return ret;
-}
-
 static void ble_on_mqtt_get(const char *topic, const uint8_t *payload,
-    size_t len)
+    size_t len, void *ctx)
 {
-    mac_addr_t mac;
-    ble_uuid_t service, characteristic;
-
     ESP_LOGD(TAG, "Got read request: %s", topic);
-    if (ble_split_topic(topic, mac, service, characteristic))
-        return;
+    mqtt_ctx_t *data = (mqtt_ctx_t *)ctx;
 
-    ble_characteristic_read(mac, service, characteristic);
+    ble_characteristic_read(data->mac, data->service, data->characteristic);
 }
 
 static void ble_on_mqtt_set(const char *topic, const uint8_t *payload,
-    size_t len)
+    size_t len, void *ctx)
 {
-    mac_addr_t mac;
-    ble_uuid_t service, characteristic;
-
     ESP_LOGD(TAG, "Got write request: %s, len: %u", topic, len);
-    if (ble_split_topic(topic, mac, service, characteristic))
-        return;
+    mqtt_ctx_t *data = (mqtt_ctx_t *)ctx;
 
-    ble_characteristic_write(mac, service, characteristic, payload, len);
+    ble_characteristic_write(data->mac, data->service, data->characteristic,
+        payload, len);
 
     /* Issue a read request to get latest value */
-    ble_characteristic_read(mac, service, characteristic);
+    ble_characteristic_read(data->mac, data->service, data->characteristic);
 }
 
 static void ble_on_characteristic_found(mac_addr_t mac, ble_uuid_t service_uuid,
@@ -181,7 +176,8 @@ static void ble_on_characteristic_found(mac_addr_t mac, ble_uuid_t service_uuid,
     if (properties & CHAR_PROP_READ)
     {
         mqtt_subscribe(ble_topic_suffix(topic, 1), config_mqtt_qos_get(),
-            ble_on_mqtt_get);
+            ble_on_mqtt_get, ble_ctx_gen(mac, service_uuid,
+            characteristic_uuid), free);
         ble_characteristic_read(mac, service_uuid, characteristic_uuid);
     }
 
@@ -189,7 +185,8 @@ static void ble_on_characteristic_found(mac_addr_t mac, ble_uuid_t service_uuid,
     if (properties & CHAR_PROP_WRITE)
     {
         mqtt_subscribe(ble_topic_suffix(topic, 0), config_mqtt_qos_get(),
-            ble_on_mqtt_set);
+            ble_on_mqtt_set, ble_ctx_gen(mac, service_uuid,
+            characteristic_uuid), free);
     }
 
     /* Characteristic can notify on changes */
