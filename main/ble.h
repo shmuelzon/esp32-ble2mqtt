@@ -29,6 +29,7 @@ typedef void (*ble_on_device_characteristic_found_cb_t)(mac_addr_t mac,
 typedef void (*ble_on_device_characteristic_value_cb_t)(mac_addr_t mac,
     ble_uuid_t service, ble_uuid_t characteristic, uint8_t *value,
     size_t value_len);
+typedef uint32_t (*ble_on_passkey_requested_cb_t)(mac_addr_t mac);
 
 /* Event handlers */
 void ble_set_on_device_discovered_cb(ble_on_device_discovered_cb_t cb);
@@ -38,6 +39,7 @@ void ble_set_on_device_services_discovered_cb(
     ble_on_device_services_discovered_cb_t cb);
 void ble_set_on_device_characteristic_value_cb(
     ble_on_device_characteristic_value_cb_t cb);
+void ble_set_on_passkey_requested_cb(ble_on_passkey_requested_cb_t cb);
 
 /* BLE Operations */
 int ble_scan_start(void);

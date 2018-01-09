@@ -215,6 +215,17 @@ static void ble_on_device_characteristic_value(mac_addr_t mac,
         config_mqtt_retained_get());
 }
 
+static uint32_t ble_on_passkey_requested(mac_addr_t mac)
+{
+    char *s = mactoa(mac);
+    uint32_t passkey = config_ble_passkey_get(s);
+
+    ESP_LOGI(TAG, "Initiating pairing with %s using the passkey %u", s,
+        passkey);
+
+    return passkey;
+}
+
 void app_main()
 {
     /* Initialize NVS */
@@ -246,6 +257,7 @@ void app_main()
     ble_set_on_device_services_discovered_cb(ble_on_device_services_discovered);
     ble_set_on_device_characteristic_value_cb(
         ble_on_device_characteristic_value);
+    ble_set_on_passkey_requested_cb(ble_on_passkey_requested);
 
     /* Start by connecting to WiFi */
     wifi_connect(config_wifi_ssid_get(), config_wifi_password_get());

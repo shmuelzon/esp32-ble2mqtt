@@ -77,6 +77,18 @@ uint8_t config_ble_should_connect(const char *mac)
     return json_find_in_array(list, mac) ? action : !action;
 }
 
+uint32_t config_ble_passkey_get(const char *mac)
+{
+    cJSON *ble = cJSON_GetObjectItemCaseSensitive(config, "ble");
+    cJSON *passkeys = cJSON_GetObjectItemCaseSensitive(ble, "passkeys");
+    cJSON *key = cJSON_GetObjectItemCaseSensitive(passkeys, mac);
+
+    if (cJSON_IsNumber(key))
+        return key->valuedouble;
+
+    return 0;
+}
+
 /* MQTT Configuration*/
 const char *config_mqtt_server_get(const char *param_name)
 {

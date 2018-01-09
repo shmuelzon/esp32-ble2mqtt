@@ -49,6 +49,7 @@ static ble_on_device_services_discovered_cb_t
     on_device_services_discovered_cb = NULL;
 static ble_on_device_characteristic_value_cb_t
     on_device_characteristic_value_cb = NULL;
+static ble_on_passkey_requested_cb_t on_passkey_requested_cb = NULL;
 
 void ble_set_on_device_discovered_cb(ble_on_device_discovered_cb_t cb)
 {
@@ -75,6 +76,11 @@ void ble_set_on_device_characteristic_value_cb(
     ble_on_device_characteristic_value_cb_t cb)
 {
     on_device_characteristic_value_cb = cb;
+}
+
+void ble_set_on_passkey_requested_cb(ble_on_passkey_requested_cb_t cb)
+{
+    on_passkey_requested_cb = cb;
 }
 
 int ble_scan_start(void)
@@ -389,6 +395,19 @@ static void gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 
         break;
     }
+    case ESP_GAP_BLE_PASSKEY_REQ_EVT:
+        esp_ble_passkey_reply(param->ble_security.ble_req.bd_addr, true,
+            on_passkey_requested_cb ?
+            on_passkey_requested_cb(param->ble_security.ble_req.bd_addr) : 0);
+        break;
+    case ESP_GAP_BLE_AUTH_CMPL_EVT: {
+        if (!param->ble_security.auth_cmpl.success)
+        {
+            ESP_LOGE(TAG, "Authentication failed, status: 0x%x",
+                param->ble_security.auth_cmpl.fail_reason);
+        }
+        break;
+    }
     default:
         ESP_LOGD(TAG, "GAP event %d wasn't handled", event);
         break;
@@ -484,10 +503,21 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
         if (param->read.status != ESP_GATT_OK){
             ESP_LOGE(TAG, "Failed reading characteristic, status = 0x%x",
                 param->read.status);
-            break;
-        }
 
-        if (!ble_device_info_get_by_conn_id_handle(devices_list,
+            /* Check if encryption/pairing is needed */
+            if (param->read.status == ESP_GATT_INSUF_AUTHENTICATION ||
+                param->read.status == ESP_GATT_INSUF_ENCRYPTION)
+            {
+                device = ble_device_find_by_conn_id(devices_list,
+                    param->read.conn_id);
+                if (device)
+                {
+                    esp_ble_set_encryption(device->mac,
+                        ESP_BLE_SEC_ENCRYPT_MITM);
+                }
+            }
+        }
+        else if (!ble_device_info_get_by_conn_id_handle(devices_list,
             param->read.conn_id, param->read.handle, &device, &service,
             &characteristic) && on_device_characteristic_value_cb)
         {
@@ -542,9 +572,14 @@ int ble_initialize(void)
     ESP_ERROR_CHECK(esp_bluedroid_init());
     ESP_ERROR_CHECK(esp_bluedroid_enable());
     ESP_ERROR_CHECK(esp_ble_gap_register_callback(gap_cb));
+    ESP_ERROR_CHECK(esp_ble_gap_config_local_privacy(true));
     ESP_ERROR_CHECK(esp_ble_gattc_register_callback(esp_gattc_cb))
     ESP_ERROR_CHECK(esp_ble_gattc_app_register(0));
     ESP_ERROR_CHECK(esp_ble_gatt_set_local_mtu(200));
+    /* Set security IO capability to KeyboardOnly */
+    esp_ble_io_cap_t iocap = ESP_IO_CAP_IN;
+    esp_ble_gap_set_security_param(ESP_BLE_SM_IOCAP_MODE, &iocap,
+        sizeof(iocap));
 
     return 0;
 }

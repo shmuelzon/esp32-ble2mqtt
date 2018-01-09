@@ -89,7 +89,8 @@ configuration:
   "ble": {
     "//Optional: 'whitelist' or 'blacklist'": [],
     "services": {},
-    "characteristics": {}
+    "characteristics": {},
+    "passkeys": {}
   }
 }
 ```
@@ -121,5 +122,14 @@ configuration:
     ```json
     "characteristics": {
       "00002f01-0000-1000-8000-00805f9b34fb": "RelayState"
+    }
+    ```
+* `passkeys` - An object containing the passkey (number 000000~999999) that
+  should be used for out-of-band authorization. Each entry is the MAC address of
+  the BLE device and the value is the passkey to use.
+
+    ```json
+    "passkeys": {
+      "aa:bb:cc:dd:ee:ff": 000000
     }
     ```
