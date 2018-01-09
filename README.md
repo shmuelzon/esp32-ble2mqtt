@@ -74,8 +74,8 @@ The `mqtt` section below includes the following entries:
   }
 }
 ```
-* `server` - defines the MQTT connection settings
-* `publish` - configuration for publishing topics
+* `server` - MQTT connection parameters
+* `publish` - Configuration for publishing topics
 * `topics`
   * `get_suffix` - Which suffix should be added to the MQTT value topic in order
     to issue a read request from the characteristic
@@ -104,18 +104,18 @@ configuration:
       "aa:bb:cc:dd:ee:ff"
     ]
     ```
-* `services` - add an additional service or override an existing definition to
-  the ones grabbed automatically during build from http://www.bluetooth.org.
-  The value of each service is its name which will be used in the MQTT topic
-  instead of its UUID. For example:
+* `services` - Add additional services or override a existing definitions to the
+  ones grabbed automatically during build from http://www.bluetooth.org. The
+  value of each service is its name which will be used in the MQTT topic instead
+  of its UUID. For example:
 
     ```json
     "services": {
       "00002f00-0000-1000-8000-00805f9b34fb": "RelayService"
     }
     ```
-* `characteristics` - add an additional characteristic or override an existing
-  definition to the ones grabbed automatically during build from
+* `characteristics` - Add additional characteristics or override existing
+  definitions to the ones grabbed automatically during build from
   http://www.bluetooth.org. The value of each service is its name which will be
   used in the MQTT topic instead of its UUID. For example:
 

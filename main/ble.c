@@ -433,7 +433,8 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
         if (scan_requested)
             esp_ble_gap_start_scanning(-1);
 
-        if (param->open.status != ESP_GATT_OK){
+        if (param->open.status != ESP_GATT_OK)
+        {
             ESP_LOGE(TAG, "Open failed, status = 0x%x", param->open.status);
             /* Remove device from cache */
             ble_device_remove_by_mac(&devices_list, param->open.remote_bda);
@@ -460,7 +461,8 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
         ble_device_remove_by_mac(&devices_list, param->close.remote_bda);
         break;
     case ESP_GATTC_CFG_MTU_EVT:
-        if (param->cfg_mtu.status != ESP_GATT_OK){
+        if (param->cfg_mtu.status != ESP_GATT_OK)
+        {
             ESP_LOGE(TAG, "Configuring MTU failed, status = 0x%x",
             param->cfg_mtu.status);
         }
@@ -477,7 +479,8 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
 
         break;
     case ESP_GATTC_SEARCH_CMPL_EVT:
-        if (param->search_cmpl.status != ESP_GATT_OK){
+        if (param->search_cmpl.status != ESP_GATT_OK)
+        {
             ESP_LOGE(TAG, "Searching services failed, status = 0x%x",
                 param->search_cmpl.status);
             break;
@@ -500,7 +503,8 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
         ble_service_t *service;
         ble_characteristic_t *characteristic;
 
-        if (param->read.status != ESP_GATT_OK){
+        if (param->read.status != ESP_GATT_OK)
+        {
             ESP_LOGE(TAG, "Failed reading characteristic, status = 0x%x",
                 param->read.status);
 
@@ -528,13 +532,15 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
         break;
     }
     case ESP_GATTC_WRITE_CHAR_EVT:
-        if (param->write.status != ESP_GATT_OK){
+        if (param->write.status != ESP_GATT_OK)
+        {
             ESP_LOGE(TAG, "Failed writing characteristic, status = 0x%x",
                 param->write.status);
         }
         break;
     case ESP_GATTC_REG_FOR_NOTIFY_EVT:
-        if (param->reg_for_notify.status != ESP_GATT_OK){
+        if (param->reg_for_notify.status != ESP_GATT_OK)
+        {
             ESP_LOGE(TAG, "Failed registering for notification, status = 0x%x",
                 param->reg_for_notify.status);
         }
