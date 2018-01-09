@@ -108,28 +108,6 @@ int mqtt_unsubscribe(const char *topic)
     return esp_mqtt_unsubscribe(topic);
 }
 
-int mqtt_unsubscribe_prefix(const char *prefix)
-{
-    mqtt_subscription_t **cur = &subscription_list, *tmp;
-    size_t len = strlen(prefix);
-
-    while (*cur)
-    {
-        if (strncmp((*cur)->topic, prefix, len))
-        {
-            cur = &(*cur)->next;
-            continue;
-        }
-
-        tmp = *cur; 
-        cur = &(*cur)->next;
-        esp_mqtt_unsubscribe(tmp->topic);
-        mqtt_subscription_free(tmp);
-    }
-
-    return 0;
-}
-
 int mqtt_publish(const char *topic, uint8_t *payload, size_t len, int qos,
     uint8_t retained)
 {
