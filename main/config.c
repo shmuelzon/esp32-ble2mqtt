@@ -1,4 +1,7 @@
 #include "config.h"
+#include "ble.h"
+#include "ble_utils.h"
+#include "gatt.h"
 #include <esp_err.h>
 #include <esp_log.h>
 #include <esp_spiffs.h>
@@ -10,9 +13,47 @@
 
 /* Constants */
 static const char *TAG = "Config";
-static cJSON *config, *services, *characteristics;
+static cJSON *config;
 
 /* BLE Configuration*/
+static const char *config_ble_get_sig_service_name(const char *uuid_str)
+{
+    ble_uuid_t uuid;
+    service_desc_t *p;
+
+    if (atouuid(uuid_str, uuid))
+        return NULL;
+
+    for (p = services; p->name; p++)
+    {
+        if (memcmp(p->uuid, uuid, sizeof(ble_uuid_t)))
+            continue;
+
+        return p->name;
+    }
+
+    return NULL;
+}
+
+static const char *config_ble_get_sig_characteristic_name(const char *uuid_str)
+{
+    ble_uuid_t uuid;
+    characteristic_desc_t *p;
+
+    if (atouuid(uuid_str, uuid))
+        return NULL;
+
+    for (p = characteristics; p->name; p++)
+    {
+        if (memcmp(p->uuid, uuid, sizeof(ble_uuid_t)))
+            continue;
+
+        return p->name;
+    }
+
+    return NULL;
+}
+
 static const char *config_ble_get_name_by_uuid(uint8_t is_service,
     const char *uuid)
 {
@@ -27,13 +68,9 @@ static const char *config_ble_get_name_by_uuid(uint8_t is_service,
         return name->valuestring;
 
     /* Check list for SIG values */
-    name = cJSON_GetObjectItemCaseSensitive(is_service ? services :
-        characteristics, uuid);
-
-    if (cJSON_IsString(name))
-        return name->valuestring;
-
-    return uuid;
+    if (is_service)
+        return config_ble_get_sig_service_name(uuid) ? : uuid;
+    return config_ble_get_sig_characteristic_name(uuid) ? : uuid;
 }
 
 const char *config_ble_service_name_get(const char *uuid)
@@ -250,12 +287,6 @@ int config_initialize(void)
 
     /* Load config.json from SPIFFS */
     if (!(config = load_json("/spiffs/config.json")))
-        return -1;
-    /* Load services.json from SPIFFS */
-    if (!(services = load_json("/spiffs/services.json")))
-        return -1;
-    /* Load characteristics.json from SPIFFS */
-    if (!(characteristics = load_json("/spiffs/characteristics.json")))
         return -1;
 
     return 0;

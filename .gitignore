@@ -1,7 +1,7 @@
 # Outputs
 build/
-data/services.json
-data/characteristics.json
+main/gatt.c
+main/gatt.h
 
 # Local files
 sdkconfig
