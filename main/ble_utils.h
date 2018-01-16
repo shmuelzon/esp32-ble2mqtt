@@ -41,6 +41,9 @@ char *mactoa(mac_addr_t mac);
 int atomac(const char *str, mac_addr_t mac);
 char *uuidtoa(ble_uuid_t uuid);
 int atouuid(const char *str, ble_uuid_t uuid);
+char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len);
+uint8_t *atochar(ble_uuid_t uuid, const char *data, size_t len,
+    size_t *ret_len);
 
 const char *ble_service_name_get(ble_uuid_t uuid);
 const char *ble_characteristic_name_get(ble_uuid_t uuid);

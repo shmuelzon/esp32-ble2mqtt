@@ -15,12 +15,12 @@ is published with a value representing the battery level.
 Characteristics supporting notifications will automatically be registered on and
 new values will be published once available. It's also possible to proactively
 issue a read request by publishing any value to the topic using the above format
-suffixed with '/Get'. Note that values are raw data rather than converted to
-strings and should be read as such.
+suffixed with '/Get'. Note that values are strings representing a hexadecimal
+byte array and should be read as such.
 
 In order to set a GATT value, publish a message to a writable characteristic
-using the above format suffixed with `/Set`. Again, data is raw and not
-converted to a string.
+using the above format suffixed with `/Set`. Again, data is a string of
+hexadecimal bytes.
 
 ## Compiling
 

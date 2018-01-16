@@ -156,9 +156,12 @@ static void ble_on_mqtt_set(const char *topic, const uint8_t *payload,
 {
     ESP_LOGD(TAG, "Got write request: %s, len: %u", topic, len);
     mqtt_ctx_t *data = (mqtt_ctx_t *)ctx;
+    size_t buf_len;
+    uint8_t *buf = atochar(data->characteristic, (const char *)payload,
+        len, &buf_len);
 
     ble_characteristic_write(data->mac, data->service, data->characteristic,
-        payload, len);
+        buf, buf_len);
 
     /* Issue a read request to get latest value */
     ble_characteristic_read(data->mac, data->service, data->characteristic);
@@ -208,10 +211,12 @@ static void ble_on_device_characteristic_value(mac_addr_t mac,
     size_t value_len)
 {
     char *topic = ble_topic(mac, service, characteristic);
+    char *payload = chartoa(characteristic, value, value_len);
+    size_t payload_len = strlen(payload);
 
     ESP_LOGI(TAG, "Publishing: %s", topic);
     ESP_LOG_BUFFER_HEX_LEVEL(TAG, value, value_len, ESP_LOG_DEBUG);
-    mqtt_publish(topic, value, value_len, config_mqtt_qos_get(),
+    mqtt_publish(topic, (uint8_t *)payload, payload_len, config_mqtt_qos_get(),
         config_mqtt_retained_get());
 }
 

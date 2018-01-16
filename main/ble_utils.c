@@ -132,6 +132,32 @@ int atouuid(const char *str, ble_uuid_t uuid)
         &uuid[5], &uuid[4], &uuid[3], &uuid[2], &uuid[1], &uuid[0]) != 16;
 }
 
+char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
+{
+    static char buf[1024];
+    char *p = buf;
+    int i;
+
+    for (i = 0; i < len; i++)
+        p += sprintf(p, "%02x,", data[i]);
+
+    *(p - 1) = '\0';
+    return buf;
+}
+
+uint8_t *atochar(ble_uuid_t uuid, const char *data, size_t len, size_t *ret_len)
+{
+    static uint8_t buf[512];
+    uint8_t *p = buf;
+    int i;
+
+    for (i = 0; i < len; i += 3)
+        p += sscanf(&data[i], "%02hhx", p);
+
+    *ret_len = p - buf;
+    return buf;
+}
+
 static const char *ble_get_sig_service_name(ble_uuid_t uuid)
 {
     service_desc_t *p;
