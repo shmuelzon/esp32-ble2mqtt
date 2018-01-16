@@ -110,9 +110,9 @@ static char *ble_topic(mac_addr_t mac, ble_uuid_t service_uuid,
     int i;
 
     i = sprintf(topic, "%s/%s", mactoa(mac),
-        config_ble_service_name_get(uuidtoa(service_uuid)));
+        ble_service_name_get(service_uuid));
     sprintf(topic + i, "/%s",
-        config_ble_characteristic_name_get(uuidtoa(characteristic_uuid)));
+        ble_characteristic_name_get(characteristic_uuid));
 
     return topic;
 }

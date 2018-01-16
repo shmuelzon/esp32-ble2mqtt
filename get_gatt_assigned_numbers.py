@@ -77,7 +77,7 @@ def write_h(filename):
       '#ifndef GATT_H\n' \
       '#define GATT_H\n' \
       '\n' \
-      '#include "ble.h"\n' \
+      '#include "ble_utils.h"\n' \
       '\n' \
       'typedef enum {\n' \
       '    %s\n'

@@ -1,6 +1,7 @@
 #ifndef BLE_H
 #define BLE_H
 
+#include "ble_utils.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -13,10 +14,6 @@
 #define CHAR_PROP_INDICATE  (1 << 5)
 #define CHAR_PROP_AUTH      (1 << 6)
 #define CHAR_PROP_EXT_PROP  (1 << 7)
-
-/* Types */
-typedef uint8_t mac_addr_t[6];
-typedef uint8_t ble_uuid_t[16];
 
 /* Event callback types */
 typedef void (*ble_on_device_discovered_cb_t)(mac_addr_t mac);

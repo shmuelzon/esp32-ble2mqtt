@@ -1,5 +1,4 @@
 #include "ble.h"
-#include "ble_utils.h"
 #include <freertos/FreeRTOSConfig.h> /* Needed bt esp_bt.h */
 #include <esp_bt.h>
 #include <esp_bt_main.h>

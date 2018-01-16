@@ -1,4 +1,6 @@
 #include "ble_utils.h"
+#include "config.h"
+#include "gatt.h"
 #include <string.h>
 
 #define CASE_STR(x) case x: return #x
@@ -128,6 +130,56 @@ int atouuid(const char *str, ble_uuid_t uuid)
         &uuid[9], &uuid[8], 
         &uuid[7], &uuid[6],
         &uuid[5], &uuid[4], &uuid[3], &uuid[2], &uuid[1], &uuid[0]) != 16;
+}
+
+static const char *ble_get_sig_service_name(ble_uuid_t uuid)
+{
+    service_desc_t *p;
+
+    for (p = services; p->name; p++)
+    {
+        if (memcmp(p->uuid, uuid, sizeof(ble_uuid_t)))
+            continue;
+
+        return p->name;
+    }
+
+    return NULL;
+}
+
+const char *ble_service_name_get(ble_uuid_t uuid)
+{
+    const char *name = config_ble_service_name_get(uuidtoa(uuid));
+
+    if (name)
+        return name;
+
+    return ble_get_sig_service_name(uuid) ? : uuidtoa(uuid);
+}
+
+static const char *ble_get_sig_characteristic_name(ble_uuid_t uuid)
+{
+    characteristic_desc_t *p;
+
+    for (p = characteristics; p->name; p++)
+    {
+        if (memcmp(p->uuid, uuid, sizeof(ble_uuid_t)))
+            continue;
+
+        return p->name;
+    }
+
+    return NULL;
+}
+
+const char *ble_characteristic_name_get(ble_uuid_t uuid)
+{
+    const char *name = config_ble_characteristic_name_get(uuidtoa(uuid));
+
+    if (name)
+        return name;
+
+    return ble_get_sig_characteristic_name(uuid) ? : uuidtoa(uuid);
 }
 
 ble_device_t *ble_device_add(ble_device_t **list, mac_addr_t mac,

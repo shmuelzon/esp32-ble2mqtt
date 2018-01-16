@@ -1,11 +1,13 @@
 #ifndef BLE_UTILS_H
 #define BLE_UTILS_H
 
-#include "ble.h"
 #include <esp_gap_ble_api.h>
 #include <esp_gattc_api.h>
 
 /* Types */
+typedef uint8_t mac_addr_t[6];
+typedef uint8_t ble_uuid_t[16];
+
 typedef struct ble_characteristic_t {
     struct ble_characteristic_t *next;
     ble_uuid_t uuid;
@@ -39,6 +41,9 @@ char *mactoa(mac_addr_t mac);
 int atomac(const char *str, mac_addr_t mac);
 char *uuidtoa(ble_uuid_t uuid);
 int atouuid(const char *str, ble_uuid_t uuid);
+
+const char *ble_service_name_get(ble_uuid_t uuid);
+const char *ble_characteristic_name_get(ble_uuid_t uuid);
 
 /* Devices list */
 ble_device_t *ble_device_add(ble_device_t **list, mac_addr_t mac,
