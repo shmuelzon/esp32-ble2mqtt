@@ -525,6 +525,9 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
                     esp_ble_set_encryption(device->mac,
                         ESP_BLE_SEC_ENCRYPT_MITM);
                 }
+                /* Try again */
+                esp_ble_gattc_read_char(g_gattc_if, param->read.conn_id,
+                        param->read.handle, ESP_GATT_AUTH_REQ_NONE);
             }
             else
             {
