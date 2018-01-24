@@ -27,6 +27,7 @@ typedef struct ble_device_t {
     mac_addr_t mac;
     uint16_t conn_id;
     ble_service_t *services;
+    uint8_t is_authenticating;
 } ble_device_t;
 
 /* Callback functions */

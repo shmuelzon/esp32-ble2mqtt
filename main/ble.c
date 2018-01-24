@@ -399,7 +399,14 @@ static void gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
             on_passkey_requested_cb ?
             on_passkey_requested_cb(param->ble_security.ble_req.bd_addr) : 0);
         break;
-    case ESP_GAP_BLE_AUTH_CMPL_EVT: {
+    case ESP_GAP_BLE_AUTH_CMPL_EVT:
+    {
+        ble_device_t *device = ble_device_find_by_mac(devices_list,
+            param->ble_security.auth_cmpl.bd_addr);
+
+        if (device)
+            device->is_authenticating = 0;
+
         if (!param->ble_security.auth_cmpl.success)
         {
             ESP_LOGE(TAG, "Authentication failed, status: 0x%x",
@@ -498,26 +505,31 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
         break;
     case ESP_GATTC_READ_CHAR_EVT:
     {
-        ble_device_t *device;
+        ble_device_t *device = ble_device_find_by_conn_id(devices_list,
+            param->read.conn_id);
         ble_service_t *service;
         ble_characteristic_t *characteristic;
 
+        if (!device)
+            break;
+
         if (param->read.status != ESP_GATT_OK)
         {
-            ESP_LOGE(TAG, "Failed reading characteristic, status = 0x%x",
-                param->read.status);
-
-            /* Check if encryption/pairing is needed */
+            /* Check if authentication/encryption is needed */
             if (param->read.status == ESP_GATT_INSUF_AUTHENTICATION ||
                 param->read.status == ESP_GATT_INSUF_ENCRYPTION)
             {
-                device = ble_device_find_by_conn_id(devices_list,
-                    param->read.conn_id);
-                if (device)
+                if (!device->is_authenticating)
                 {
+                    device->is_authenticating = 1;
                     esp_ble_set_encryption(device->mac,
                         ESP_BLE_SEC_ENCRYPT_MITM);
                 }
+            }
+            else
+            {
+                ESP_LOGE(TAG, "Failed reading characteristic, status = 0x%x",
+                        param->read.status);
             }
         }
         else if (!ble_device_info_get_by_conn_id_handle(devices_list,

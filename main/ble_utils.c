@@ -647,11 +647,9 @@ ble_device_t *ble_device_add(ble_device_t **list, mac_addr_t mac,
 {
     ble_device_t *dev, **cur;
 
-    dev = malloc(sizeof(*dev));
-    dev->next = NULL;
+    dev = calloc(1, sizeof(*dev));
     memcpy(dev->mac, mac, sizeof(mac_addr_t));
     dev->conn_id = conn_id;
-    dev->services = NULL;
 
     for (cur = list; *cur; cur = &(*cur)->next);
     *cur = dev;
