@@ -1,6 +1,7 @@
 #include "ble_utils.h"
 #include "config.h"
 #include "gatt.h"
+#include <math.h>
 #include <string.h>
 
 #define CASE_STR(x) case x: return #x
@@ -132,33 +133,7 @@ int atouuid(const char *str, ble_uuid_t uuid)
         &uuid[5], &uuid[4], &uuid[3], &uuid[2], &uuid[1], &uuid[0]) != 16;
 }
 
-char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
-{
-    static char buf[1024];
-    char *p = buf;
-    int i;
-
-    for (i = 0; i < len; i++)
-        p += sprintf(p, "%02x,", data[i]);
-
-    *(p - 1) = '\0';
-    return buf;
-}
-
-uint8_t *atochar(ble_uuid_t uuid, const char *data, size_t len, size_t *ret_len)
-{
-    static uint8_t buf[512];
-    uint8_t *p = buf;
-    int i;
-
-    for (i = 0; i < len; i += 3)
-        p += sscanf(&data[i], "%02hhx", p);
-
-    *ret_len = p - buf;
-    return buf;
-}
-
-static const char *ble_get_sig_service_name(ble_uuid_t uuid)
+static service_desc_t *ble_get_sig_service(ble_uuid_t uuid)
 {
     service_desc_t *p;
 
@@ -167,10 +142,477 @@ static const char *ble_get_sig_service_name(ble_uuid_t uuid)
         if (memcmp(p->uuid, uuid, sizeof(ble_uuid_t)))
             continue;
 
-        return p->name;
+        return p;
     }
 
     return NULL;
+}
+
+static characteristic_desc_t *ble_get_sig_characteristic(ble_uuid_t uuid)
+{
+    characteristic_desc_t *p;
+
+    for (p = characteristics; p->name; p++)
+    {
+        if (memcmp(p->uuid, uuid, sizeof(ble_uuid_t)))
+            continue;
+
+        return p;
+    }
+
+    return NULL;
+}
+
+static characteristic_type_t *ble_get_sig_characteristic_types(ble_uuid_t uuid)
+{
+    characteristic_desc_t *c = ble_get_sig_characteristic(uuid);
+    return c ? c->types : NULL;
+}
+
+static characteristic_type_t ble_atotype(const char *type)
+{
+    struct {
+        const char *name;
+        int type;
+    } *p, types[] = {
+        { "boolean", CHAR_TYPE_BOOLEAN },
+        { "2bit", CHAR_TYPE_2BIT },
+        { "4bit", CHAR_TYPE_4BIT },
+        { "nibble", CHAR_TYPE_NIBBLE },
+        { "8bit", CHAR_TYPE_8BIT },
+        { "uint8", CHAR_TYPE_UINT8 },
+        { "sint8", CHAR_TYPE_SINT8 },
+        { "uint12", CHAR_TYPE_UINT12 },
+        { "16bit", CHAR_TYPE_16BIT },
+        { "uint16", CHAR_TYPE_UINT16 },
+        { "sint16", CHAR_TYPE_SINT16 },
+        { "24bit", CHAR_TYPE_24BIT },
+        { "uint24", CHAR_TYPE_UINT24 },
+        { "sint24", CHAR_TYPE_SINT24 },
+        { "32bit", CHAR_TYPE_32BIT },
+        { "uint32", CHAR_TYPE_UINT32 },
+        { "sint32", CHAR_TYPE_SINT32 },
+        { "uint40", CHAR_TYPE_UINT40 },
+        { "uint48", CHAR_TYPE_UINT48 },
+        { "utf8s", CHAR_TYPE_UTF8S },
+        { "float64", CHAR_TYPE_FLOAT64 },
+        { "sfloat", CHAR_TYPE_SFLOAT },
+        { "float", CHAR_TYPE_FLOAT },
+        { "reg-cert-data-list", CHAR_TYPE_REG_CERT_DATA_LIST },
+        { "variable", CHAR_TYPE_VARIABLE },
+        { "gatt-uuid", CHAR_TYPE_GATT_UUID },
+        { NULL, CHAR_TYPE_UNKNOWN },
+    };
+
+    for (p = types; p->name; p++)
+    {
+        if (!strcmp(p->name, type))
+            break;
+    }
+
+    return p->type;
+}
+
+static characteristic_type_t *ble_get_characteristic_types(ble_uuid_t uuid)
+{
+    static characteristic_type_t ret[32];
+    int i = 0;
+    const char **iter, **conf_types =
+        config_ble_characteristic_types_get(uuidtoa(uuid));
+
+    if (!conf_types)
+        return ble_get_sig_characteristic_types(uuid);
+
+    for (iter = conf_types; *iter; iter++)
+        ret[i++] = ble_atotype(*iter);
+    ret[i] = -1;
+
+    return ret;
+}
+
+char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
+{
+    characteristic_type_t *types = ble_get_characteristic_types(uuid);
+    static char buf[1024];
+    char *p = buf;
+    int i = 0;
+
+    /* A note from the Bluetooth specification:
+     * If a format is not a whole number of octets, then the data shall be
+     * contained within the least significant bits of the value, and all other
+     * bits shall be set to zero on transmission and ignored upon receipt. If
+     * the Characteristic Value is less than an octet, it occupies an entire
+     * octet.
+     */
+    for (; types && *types != -1; types++)
+    {
+        switch (*types)
+        {
+        case CHAR_TYPE_BOOLEAN:
+            p += sprintf(p, "%s,", data[i] & 0x01 ? "true" : "false");
+            i += 1;
+            break;
+        case CHAR_TYPE_2BIT:
+            p += sprintf(p, "%hhu,", data[i] & 0x03);
+            i += 1;
+            break;
+        case CHAR_TYPE_4BIT:
+        case CHAR_TYPE_NIBBLE:
+            p += sprintf(p, "%hhu,", data[i] & 0x0F);
+            i += 1;
+            break;
+        case CHAR_TYPE_8BIT:
+        case CHAR_TYPE_UINT8:
+        case CHAR_TYPE_SINT8:
+            if (*types == CHAR_TYPE_SINT8)
+                p += sprintf(p, "%hhd,", data[i]);
+            else
+                p += sprintf(p, "%hhu,", data[i]);
+            i += 1;
+            break;
+        case CHAR_TYPE_UINT12:
+        {
+            uint16_t tmp = (data[i + 1] << 8) | data[i];
+
+            p += sprintf(p, "%hu,", tmp & 0x0FFF);
+            i += 2;
+            break;
+        }
+        case CHAR_TYPE_16BIT:
+        case CHAR_TYPE_UINT16:
+        case CHAR_TYPE_SINT16:
+        {
+            uint16_t tmp = (data[i + 1] << 8) | data[i];
+
+            if (*types == CHAR_TYPE_SINT16)
+                p += sprintf(p, "%hd,", tmp);
+            else
+                p += sprintf(p, "%hu,", tmp);
+
+            i += 2;
+            break;
+        }
+        case CHAR_TYPE_24BIT:
+        case CHAR_TYPE_UINT24:
+        case CHAR_TYPE_SINT24:
+        {
+            uint32_t tmp = (data[i + 2] << 16) | (data[i + 1] << 8) | data[i];
+
+            if (*types == CHAR_TYPE_SINT24)
+                p += sprintf(p, "%d,", (int32_t)tmp << 8 >> 8);
+            else
+                p += sprintf(p, "%u,", tmp);
+
+            i += 3;
+            break;
+        }
+        case CHAR_TYPE_32BIT:
+        case CHAR_TYPE_UINT32:
+        case CHAR_TYPE_SINT32:
+        {
+            uint32_t tmp = (data[i + 3] << 24) | (data[i + 2] << 16) |
+                (data[i + 1] << 8) | data[i];
+
+            if (*types == CHAR_TYPE_SINT32)
+                p += sprintf(p, "%d,", tmp);
+            else
+                p += sprintf(p, "%u,", tmp);
+
+            i += 4;
+            break;
+        }
+        case CHAR_TYPE_UINT40:
+        {
+            uint64_t tmp = ((uint64_t)data[i + 4] << 32) | (data[i + 3] << 24) |
+                (data[i + 2] << 16) | (data[i + 1] << 8) | data[i];
+
+            p += sprintf(p, "%llu,", tmp);
+
+            i += 5;
+            break;
+        }
+        case CHAR_TYPE_UINT48:
+        {
+            uint64_t tmp = ((uint64_t)data[i + 5] << 40) |
+                ((uint64_t)data[i + 4] << 32) | (data[i + 3] << 24) |
+                (data[i + 2] << 16) | (data[i + 1] << 8) | data[i];
+
+            p += sprintf(p, "%llu,", tmp);
+
+            i += 6;
+            break;
+        }
+        /* String values consume the rest of the buffer */
+        case CHAR_TYPE_UTF8S:
+        {
+            int c = len - i;
+
+            memcpy(p, &data[i], c);
+
+            p += c;
+            i += c;
+            p += sprintf(p, ",");
+            break;
+        }
+        /* IEEE-754 floating point format */
+        /* Note, ESP-32 is little endian, as is the characteristic value */
+        case CHAR_TYPE_FLOAT64:
+        {
+            union {
+                double d;
+                uint8_t b[8];
+            } tmp;
+            memcpy(&tmp.d, tmp.b, 8);
+
+            p += sprintf(p, "%f,", tmp.d);
+
+            i += 8;
+            break;
+        }
+        /* IEEE-11073 floating point format */
+        case CHAR_TYPE_SFLOAT:
+        {
+            uint16_t tmp = (data[i + 1] << 8) | data[i];
+            int16_t mantissa = tmp & 0X0FFF;
+            int8_t exponent = (tmp >> 12) & 0x0F;
+
+            /* Fix sign */
+            if (exponent >= 0x0008)
+                exponent = -((0x000F + 1) - exponent);
+            if (mantissa >= 0x0800)
+                mantissa = -((0x0FFF + 1) - mantissa);
+
+            p += sprintf(p, "%f,", mantissa * pow(10.0f, exponent));
+
+            i += 2;
+            break;
+        }
+        case CHAR_TYPE_FLOAT:
+        {
+            int8_t exponent = data[i + 3];
+            int32_t mantissa = ((data[i + 2] << 24) | (data[i + 1] << 16) |
+                 data[i] << 8) >> 8;
+
+            /* Fix sign */
+            if (mantissa >= 0x800000)
+                mantissa = -((0xFFFFFF + 1) - mantissa);
+
+            p += sprintf(p, "%f,", mantissa * pow(10.0f, exponent));
+
+            i += 4;
+            break;
+        }
+        case CHAR_TYPE_REG_CERT_DATA_LIST:
+        case CHAR_TYPE_VARIABLE:
+        case CHAR_TYPE_GATT_UUID:
+        case CHAR_TYPE_UNKNOWN:
+            printf(">>>> Unhandled characteristic type %d <<<<\n", *types);
+        }
+    }
+
+    for (; i < len; i++)
+        p += sprintf(p, "%u,", data[i]);
+
+    *(p - 1) = '\0';
+    return buf;
+}
+
+uint8_t *atochar(ble_uuid_t uuid, const char *data, size_t len, size_t *ret_len)
+{
+    characteristic_type_t *types = ble_get_characteristic_types(uuid);
+    static uint8_t buf[512];
+    uint8_t *p = buf;
+    char *str = strdup(data);
+    char *val = strtok(str, ",");
+
+    for (; types && *types != -1 && val; types++)
+    {
+        switch (*types)
+        {
+        case CHAR_TYPE_BOOLEAN:
+            *p = !strcmp(val, "true") ? 1 : 0;
+            p += 1;
+            break;
+        case CHAR_TYPE_2BIT:
+            *p = strtoul(val, NULL, 10) & 0x03;
+            p += 1;
+            break;
+        case CHAR_TYPE_4BIT:
+        case CHAR_TYPE_NIBBLE:
+            *p = strtoul(val, NULL, 10) & 0x0F;
+            p += 1;
+            break;
+        case CHAR_TYPE_8BIT:
+        case CHAR_TYPE_UINT8:
+        case CHAR_TYPE_SINT8:
+            if (*types == CHAR_TYPE_SINT8)
+                *p += strtol(val, NULL, 10);
+            else
+                *p += strtoul(val, NULL, 10);
+            p += 1;
+            break;
+        case CHAR_TYPE_UINT12:
+        {
+            uint16_t tmp = strtoul(val, NULL, 10) & 0x0FFF;
+
+            *p = tmp & 0xFF;
+            *(p + 1) = (tmp >> 8) & 0xFF;
+
+            p += 2;
+            break;
+        }
+        case CHAR_TYPE_16BIT:
+        case CHAR_TYPE_UINT16:
+        {
+            uint16_t tmp = strtoul(val, NULL, 10) & 0xFFFF;
+
+            *p = tmp & 0xFF;
+            *(p + 1) = (tmp >> 8) & 0xFF;
+
+            p += 2;
+            break;
+        }
+        case CHAR_TYPE_SINT16:
+        {
+            uint16_t tmp = strtol(val, NULL, 10) & 0xFFFF;
+
+            *p = tmp & 0xFF;
+            *(p + 1) = (tmp >> 8) & 0xFF;
+
+            p += 2;
+            break;
+        }
+        case CHAR_TYPE_24BIT:
+        case CHAR_TYPE_UINT24:
+        {
+            uint32_t tmp = strtoul(val, NULL, 10) & 0x00FFFFFF;
+
+            *p = tmp & 0xFF;
+            *(p + 1) = (tmp >> 8) & 0xFF;
+            *(p + 2) = (tmp >> 16) & 0xFF;
+
+            p += 3;
+            break;
+        }
+        case CHAR_TYPE_SINT24:
+        {
+            uint32_t tmp = strtol(val, NULL, 10) & 0x00FFFFFF;
+
+            *p = tmp & 0xFF;
+            *(p + 1) = (tmp >> 8) & 0xFF;
+            *(p + 2) = (tmp >> 16) & 0xFF;
+
+            p += 3;
+            break;
+        }
+        case CHAR_TYPE_32BIT:
+        {
+            uint32_t tmp = strtol(val, NULL, 10);
+
+            *p = tmp & 0xFF;
+            *(p + 1) = (tmp >> 8) & 0xFF;
+            *(p + 2) = (tmp >> 16) & 0xFF;
+            *(p + 3) = (tmp >> 24) & 0xFF;
+
+            p += 4;
+            break;
+        }
+        case CHAR_TYPE_UINT32:
+        case CHAR_TYPE_SINT32:
+        {
+            uint32_t tmp = strtoul(val, NULL, 10);
+
+            *p = tmp & 0xFF;
+            *(p + 1) = (tmp >> 8) & 0xFF;
+            *(p + 2) = (tmp >> 16) & 0xFF;
+            *(p + 3) = (tmp >> 24) & 0xFF;
+
+            p += 4;
+            break;
+        }
+        case CHAR_TYPE_UINT40:
+        {
+            uint64_t tmp = strtoul(val, NULL, 10);
+
+            *p = tmp & 0xFF;
+            *(p + 1) = (tmp >> 8) & 0xFF;
+            *(p + 2) = (tmp >> 16) & 0xFF;
+            *(p + 3) = (tmp >> 24) & 0xFF;
+            *(p + 4) = (tmp >> 32) & 0xFF;
+
+            p += 5;
+            break;
+        }
+        case CHAR_TYPE_UINT48:
+        {
+            uint64_t tmp = strtoul(val, NULL, 10);
+
+            *p = tmp & 0xFF;
+            *(p + 1) = (tmp >> 8) & 0xFF;
+            *(p + 2) = (tmp >> 16) & 0xFF;
+            *(p + 3) = (tmp >> 24) & 0xFF;
+            *(p + 4) = (tmp >> 32) & 0xFF;
+            *(p + 5) = (tmp >> 40) & 0xFF;
+
+            p += 6;
+            break;
+        }
+        /* String values consume the rest of the buffer */
+        case CHAR_TYPE_UTF8S:
+        {
+            size_t len = strlen(val);
+
+            strcpy((char *)p, val);
+
+            p += len + 1;
+            break;
+        }
+        /* IEEE-754 floating point format */
+        /* Note, ESP-32 is little endian, as is the characteristic value */
+        case CHAR_TYPE_FLOAT64:
+        {
+            union {
+                double d;
+                uint8_t b[8];
+            } tmp;
+            tmp.d = strtod(val, NULL);
+
+            memcpy(p, tmp.b, 8);
+
+            p += 8;
+            break;
+        }
+        /* IEEE-11073 floating point format */
+        case CHAR_TYPE_SFLOAT:
+        case CHAR_TYPE_FLOAT:
+        case CHAR_TYPE_REG_CERT_DATA_LIST:
+        case CHAR_TYPE_VARIABLE:
+        case CHAR_TYPE_GATT_UUID:
+        case CHAR_TYPE_UNKNOWN:
+            printf(">>>> Unhandled characteristic type %d <<<<\n", *types);
+        }
+
+        val = strtok(NULL, ",");
+    }
+
+    while (val)
+    {
+        *p = strtoul(val, NULL, 10);
+        p += 1;
+        val = strtok(NULL, ",");
+    }
+
+    free(str);
+
+    *ret_len = p - buf;
+    return buf;
+}
+
+static const char *ble_get_sig_service_name(ble_uuid_t uuid)
+{
+    service_desc_t *p = ble_get_sig_service(uuid);
+
+    return p ? p->name : NULL;
 }
 
 const char *ble_service_name_get(ble_uuid_t uuid)
@@ -185,17 +627,9 @@ const char *ble_service_name_get(ble_uuid_t uuid)
 
 static const char *ble_get_sig_characteristic_name(ble_uuid_t uuid)
 {
-    characteristic_desc_t *p;
+    characteristic_desc_t *p = ble_get_sig_characteristic(uuid);
 
-    for (p = characteristics; p->name; p++)
-    {
-        if (memcmp(p->uuid, uuid, sizeof(ble_uuid_t)))
-            continue;
-
-        return p->name;
-    }
-
-    return NULL;
+    return p ? p->name : NULL;
 }
 
 const char *ble_characteristic_name_get(ble_uuid_t uuid)

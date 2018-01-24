@@ -13,15 +13,23 @@ static const char *TAG = "Config";
 static cJSON *config;
 
 /* BLE Configuration*/
-static const char *config_ble_get_name_by_uuid(uint8_t is_service,
-    const char *uuid)
+static cJSON *config_ble_get_name_by_uuid(uint8_t is_service,
+    const char *uuid, const char *field_name)
 {
     cJSON *ble = cJSON_GetObjectItemCaseSensitive(config, "ble");
     cJSON *list = cJSON_GetObjectItemCaseSensitive(ble,
         is_service ?  "services" : "characteristics");
 
     /* Check config.json for override values */
-    cJSON *name = cJSON_GetObjectItemCaseSensitive(list, uuid);
+    cJSON *obj = cJSON_GetObjectItemCaseSensitive(list, uuid);
+    cJSON *field = cJSON_GetObjectItemCaseSensitive(obj, field_name);
+
+    return field;
+}
+
+const char *config_ble_service_name_get(const char *uuid)
+{
+    cJSON *name = config_ble_get_name_by_uuid(1, uuid, "name");
 
     if (cJSON_IsString(name))
         return name->valuestring;
@@ -29,14 +37,41 @@ static const char *config_ble_get_name_by_uuid(uint8_t is_service,
     return NULL;
 }
 
-const char *config_ble_service_name_get(const char *uuid)
-{
-    return config_ble_get_name_by_uuid(1, uuid);
-}
-
 const char *config_ble_characteristic_name_get(const char *uuid)
 {
-    return config_ble_get_name_by_uuid(0, uuid);
+    cJSON *name = config_ble_get_name_by_uuid(0, uuid, "name");
+
+    if (cJSON_IsString(name))
+        return name->valuestring;
+
+    return NULL;
+}
+
+const char **config_ble_characteristic_types_get(const char *uuid)
+{
+    cJSON *types = config_ble_get_name_by_uuid(0, uuid, "types");
+    static char **ret = NULL;
+    int i, size;
+
+    if (ret)
+    {
+        free(ret);
+        ret = NULL;
+    }
+
+    if (!cJSON_IsArray(types))
+        return NULL;
+
+    size = cJSON_GetArraySize(types);
+    ret = malloc(sizeof(char *) * (size + 1));
+    for (i = 0; i < size; i++)
+    {
+        cJSON *type = cJSON_GetArrayItem(types, i);
+        ret[i] = type->valuestring;
+    }
+    ret[size] = NULL;
+
+    return (const char **)ret;
 }
 
 cJSON *json_find_in_array(cJSON *arr, const char *item)

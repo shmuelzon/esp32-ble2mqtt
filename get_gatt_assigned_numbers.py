@@ -80,6 +80,7 @@ def write_h(filename):
       '#include "ble_utils.h"\n' \
       '\n' \
       'typedef enum {\n' \
+      '    CHAR_TYPE_UNKNOWN,\n'
       '    %s\n'
       '} characteristic_type_t;\n' \
       '\n' \

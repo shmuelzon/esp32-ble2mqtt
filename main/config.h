@@ -6,6 +6,7 @@
 /* BLE Configuration*/
 const char *config_ble_service_name_get(const char *uuid);
 const char *config_ble_characteristic_name_get(const char *uuid);
+const char **config_ble_characteristic_types_get(const char *uuid);
 uint8_t config_ble_should_connect(const char *mac);
 uint32_t config_ble_passkey_get(const char *mac);
 

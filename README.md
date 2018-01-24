@@ -15,12 +15,15 @@ is published with a value representing the battery level.
 Characteristics supporting notifications will automatically be registered on and
 new values will be published once available. It's also possible to proactively
 issue a read request by publishing any value to the topic using the above format
-suffixed with '/Get'. Note that values are strings representing a hexadecimal
-byte array and should be read as such.
+suffixed with '/Get'. Note that values are strings representing the
+characteristic values based on their definitions grabbed from
+http://bluetooth.org. For example, a battery level of 100% (0x64) will be sent
+as a string '100'.
 
 In order to set a GATT value, publish a message to a writable characteristic
-using the above format suffixed with `/Set`. Again, data is a string of
-hexadecimal bytes.
+using the above format suffixed with `/Set`. Payload should be of the same
+format described above and will be converted, when needed, before sending to the
+BLE peripheral.
 
 ## Compiling
 
@@ -105,23 +108,32 @@ configuration:
     ]
     ```
 * `services` - Add additional services or override a existing definitions to the
-  ones grabbed automatically during build from http://www.bluetooth.org. The
-  value of each service is its name which will be used in the MQTT topic instead
-  of its UUID. For example:
+  ones grabbed automatically during build from http://www.bluetooth.org. Each
+  service can include a `name` field which will be used in the MQTT topic
+  instead of its UUID. For example:
 
     ```json
     "services": {
-      "00002f00-0000-1000-8000-00805f9b34fb": "RelayService"
+      "00002f00-0000-1000-8000-00805f9b34fb": {
+        "name": "Relay Service"
+      }
     }
     ```
 * `characteristics` - Add additional characteristics or override existing
   definitions to the ones grabbed automatically during build from
-  http://www.bluetooth.org. The value of each service is its name which will be
-  used in the MQTT topic instead of its UUID. For example:
+  http://www.bluetooth.org. Each characteristic can include a `name` field which
+  will be used in the MQTT topic instead of its UUID and a `types` array
+  defining how to parse the byte array reflecting the characteristic's value.
+  For example:
 
     ```json
     "characteristics": {
-      "00002f01-0000-1000-8000-00805f9b34fb": "RelayState"
+      "00002f01-0000-1000-8000-00805f9b34fb": {
+        "name": "Relay State",
+        "types": [
+          "boolean"
+        ]
+      }
     }
     ```
 * `passkeys` - An object containing the passkey (number 000000~999999) that
