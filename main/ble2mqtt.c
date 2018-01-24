@@ -214,8 +214,7 @@ static void ble_on_device_characteristic_value(mac_addr_t mac,
     char *payload = chartoa(characteristic, value, value_len);
     size_t payload_len = strlen(payload);
 
-    ESP_LOGI(TAG, "Publishing: %s", topic);
-    ESP_LOG_BUFFER_HEX_LEVEL(TAG, value, value_len, ESP_LOG_DEBUG);
+    ESP_LOGI(TAG, "Publishing: %s = %s", topic, payload);
     mqtt_publish(topic, (uint8_t *)payload, payload_len, config_mqtt_qos_get(),
         config_mqtt_retained_get());
 }
