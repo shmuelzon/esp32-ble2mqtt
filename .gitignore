@@ -1,6 +1,6 @@
 # Outputs
 build/
-main/gatt.c
+main/gatt.inc
 main/gatt.h
 
 # Local files
