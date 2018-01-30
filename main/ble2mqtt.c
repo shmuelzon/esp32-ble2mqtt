@@ -18,6 +18,19 @@ typedef struct {
     ble_uuid_t characteristic;
 } mqtt_ctx_t;
 
+static char *device_name_get(void)
+{
+    static char name[14] = {};
+
+    if (!*name)
+    {
+        uint8_t *mac = wifi_mac_get();
+        sprintf(name, "BLE2MQTT-%02X%02X", mac[4], mac[5]);
+    }
+
+    return name;
+}
+
 /* Wi-Fi callback functions */
 static void wifi_on_connected(void)
 {
@@ -264,5 +277,6 @@ void app_main()
     ble_set_on_passkey_requested_cb(ble_on_passkey_requested);
 
     /* Start by connecting to WiFi */
+    wifi_hostname_set(device_name_get());
     wifi_connect(config_wifi_ssid_get(), config_wifi_password_get());
 }

@@ -10,6 +10,7 @@ static const char *TAG = "WiFi";
 
 static wifi_on_connected_cb_t on_connected_cb = NULL;
 static wifi_on_disconnected_cb_t on_disconnected_cb = NULL;
+static char *wifi_hostname = NULL;
 
 void wifi_set_on_connected_cb(wifi_on_connected_cb_t cb)
 {
@@ -21,10 +22,29 @@ void wifi_set_on_disconnected_cb(wifi_on_disconnected_cb_t cb)
     on_disconnected_cb = cb;
 }
 
+uint8_t *wifi_mac_get(void)
+{
+    static uint8_t mac[6] = {};
+
+    if (!mac[0])
+        esp_wifi_get_mac(ESP_IF_WIFI_STA, mac);
+
+    return mac;
+}
+
+void wifi_hostname_set(const char *hostname)
+{
+    if (wifi_hostname)
+        free(wifi_hostname);
+    wifi_hostname = strdup(hostname);
+}
+
 static esp_err_t event_handler(void *ctx, system_event_t *event)
 {
     switch(event->event_id) {
     case SYSTEM_EVENT_STA_START:
+        if (wifi_hostname)
+            tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, wifi_hostname);
         esp_wifi_connect();
         break;
     case SYSTEM_EVENT_STA_GOT_IP:
