@@ -56,6 +56,7 @@ static void mqtt_on_connected(void)
 static void mqtt_on_disconnected(void)
 {
     ESP_LOGI(TAG, "Disonnected from MQTT, stopping BLE");
+    ble_scan_stop();
     ble_disconnect_all();
     mqtt_connect(config_mqtt_host_get(), config_mqtt_port_get(),
         config_mqtt_client_id_get(), config_mqtt_username_get(),
