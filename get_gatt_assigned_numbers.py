@@ -6,8 +6,10 @@ import re
 from multiprocessing.dummy import Pool as ThreadPool
 try:
   import urllib.request as urlrequest
+  from http.cookiejar import CookieJar
 except ImportError:
-  import urllib as urlrequest
+  import urllib2 as urlrequest
+  from cookielib import CookieJar
 
 GATT_URL = 'https://www.bluetooth.com/specifications/gatt'
 SERVICES_URL = GATT_URL + '/services';
@@ -17,6 +19,7 @@ CHARACTERISTIC_URL = 'https://www.bluetooth.com/api/gatt/XmlFile?xmlFileName='
 services = {}
 characteristics = {}
 characteristics_types = {}
+cj = CookieJar()
 
 def build_gatt_regex(gatt_type):
   # Nasty, nasty regex to parse a service/characterisitc row in the HTML.
@@ -39,7 +42,8 @@ def parse_services(data):
 
 def get_characteristics_types(uuid):
   url = CHARACTERISTIC_URL + characteristics[uuid]['org'] + '.xml'
-  data = urlrequest.urlopen(url).read().decode('utf-8')
+  opener = urlrequest.build_opener(urlrequest.HTTPCookieProcessor(cj))
+  data = opener.open(url).read().decode('utf-8')
   print('Downloaded ' + characteristics[uuid]['org'])
 
   for char_type in re.findall(r'<Format>([^<]*)<\/Format>', data):
@@ -68,7 +72,8 @@ def parse_characteristics(data):
   pool.join()
 
 def get_list(url, parser):
-  data = urlrequest.urlopen(url).read().decode('utf-8')
+  opener = urlrequest.build_opener(urlrequest.HTTPCookieProcessor(cj))
+  data = opener.open(url).read().decode('utf-8')
   parser(data)
 
 def write_h(filename):
@@ -98,7 +103,7 @@ def write_h(filename):
       'extern service_desc_t services[];\n' \
       'extern characteristic_desc_t characteristics[];\n' \
       '\n' \
-      '#endif' % (',\n    '.join(characteristics_types.keys()))
+      '#endif' % (',\n    '.join(sorted(characteristics_types.keys())))
     )
     outfile.close()
 
@@ -111,7 +116,7 @@ def write_c(filename):
       'service_desc_t services[] = {\n');
 
     # Write services definitions
-    for uuid, service in sorted(services.iteritems()):
+    for uuid, service in sorted(services.items()):
       outfile.write(
         '    {\n' \
         '        .uuid = { %s },\n' \
@@ -126,14 +131,14 @@ def write_c(filename):
       '\n');
 
     # Write characteristic types for each characteristic
-    for uuid, char in sorted(characteristics.iteritems()):
+    for uuid, char in sorted(characteristics.items()):
       outfile.write('static characteristic_type_t types_%s[] = { %s-1 };\n' %
         (uuid.replace('-', '_'),
         ''.join('{0}, '.format(t) for t in char['types'])));
 
     # Write characteristics definitions
     outfile.write('\ncharacteristic_desc_t characteristics[] = {\n' );
-    for uuid, char in sorted(characteristics.iteritems()):
+    for uuid, char in sorted(characteristics.items()):
       outfile.write(
         '    {\n' \
         '        .uuid = { %s },\n' \
