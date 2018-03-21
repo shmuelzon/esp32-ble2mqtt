@@ -64,7 +64,7 @@ The `mqtt` section below includes the following entries:
       "port": 1883,
       "username": null,
       "password": null,
-      "client_it": null
+      "client_id": null
     },
     "publish": {
       "qos": 0,
