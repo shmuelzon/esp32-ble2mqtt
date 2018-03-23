@@ -18,6 +18,7 @@ typedef struct mqtt_subscription_t {
 
 /* Internal state */
 static mqtt_subscription_t *subscription_list = NULL;
+static uint8_t is_connected = 0;
 
 /* Callback functions */
 static mqtt_on_connected_cb_t on_connected_cb = NULL;
@@ -96,6 +97,9 @@ static void mqtt_subscription_remove(mqtt_subscription_t **list,
 int mqtt_subscribe(const char *topic, int qos, mqtt_on_message_received_cb_t cb,
     void *ctx, mqtt_free_ctx_cb_t free_cb)
 {
+    if (!is_connected)
+        return -1;
+
     ESP_LOGD(TAG, "Subscribing to %s", topic);
     mqtt_subscription_add(&subscription_list, topic, cb, ctx, free_cb);
     return esp_mqtt_subscribe(topic, qos) != true;
@@ -105,12 +109,19 @@ int mqtt_unsubscribe(const char *topic)
 {
     ESP_LOGD(TAG, "Unsubscribing from %s", topic);
     mqtt_subscription_remove(&subscription_list, topic);
+
+    if (!is_connected)
+        return 0;
+
     return esp_mqtt_unsubscribe(topic);
 }
 
 int mqtt_publish(const char *topic, uint8_t *payload, size_t len, int qos,
     uint8_t retained)
 {
+    if (!is_connected)
+        return -1;
+
     return esp_mqtt_publish(topic, payload, len, qos, retained) != true;
 }
 
@@ -119,11 +130,13 @@ static void mqtt_status_cb(esp_mqtt_status_t status)
     switch (status) {
     case ESP_MQTT_STATUS_CONNECTED:
         ESP_LOGI(TAG, "MQTT client connected");
+        is_connected = 1;
         if (on_connected_cb)
             on_connected_cb();
         break;
     case ESP_MQTT_STATUS_DISCONNECTED:
         ESP_LOGI(TAG, "MQTT client disconnected");
+        is_connected = 0;
         mqtt_subscriptions_free(&subscription_list);
         if (on_disconnected_cb)
             on_disconnected_cb();
@@ -158,6 +171,7 @@ int mqtt_connect(const char *host, uint16_t port, const char *client_id,
 int mqtt_disconnect(void)
 {
     ESP_LOGI(TAG, "Disconnecting MQTT client");
+    is_connected = 0;
     esp_mqtt_stop();
     return 0;
 }
