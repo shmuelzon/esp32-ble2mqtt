@@ -55,14 +55,14 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
         break;
     case SYSTEM_EVENT_STA_LOST_IP:
         ESP_LOGD(TAG, "Lost IP address");
-        if (on_disconnected_cb)
-            on_disconnected_cb();
         break;
     case SYSTEM_EVENT_STA_CONNECTED:
         ESP_LOGI(TAG, "Connected");
         break;
     case SYSTEM_EVENT_STA_DISCONNECTED:
         ESP_LOGI(TAG, "Disconnected");
+        if (on_disconnected_cb)
+            on_disconnected_cb();
         /* This is a workaround as ESP32 WiFi libs don't currently
          * auto-reassociate. */
         esp_wifi_connect();
