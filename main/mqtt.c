@@ -16,8 +16,18 @@ typedef struct mqtt_subscription_t {
     mqtt_free_ctx_cb_t free_cb;
 } mqtt_subscription_t;
 
+typedef struct mqtt_publications_t {
+    struct mqtt_publications_t *next;
+    char *topic;
+    uint8_t *payload;
+    size_t len;
+    int qos;
+    uint8_t retained;
+} mqtt_publications_t;
+
 /* Internal state */
 static mqtt_subscription_t *subscription_list = NULL;
+static mqtt_publications_t *publications_list = NULL;
 static uint8_t is_connected = 0;
 
 /* Callback functions */
@@ -94,6 +104,56 @@ static void mqtt_subscription_remove(mqtt_subscription_t **list,
     mqtt_subscription_free(tmp);
 }
 
+static mqtt_publications_t *mqtt_publication_add(mqtt_publications_t **list,
+    const char *topic, uint8_t *payload, size_t len, int qos, uint8_t retained)
+{
+    mqtt_publications_t *pub = malloc(sizeof(*pub));
+
+    pub->topic = strdup(topic);
+    pub->payload = malloc(len);
+    memcpy(pub->payload, payload, len);
+    pub->len = len;
+    pub->qos = qos;
+    pub->retained = retained;
+
+    pub->next = *list;
+    *list = pub;
+
+    return pub;
+}
+
+static void mqtt_publication_free(mqtt_publications_t *mqtt_publication)
+{
+    free(mqtt_publication->topic);
+    free(mqtt_publication->payload);
+    free(mqtt_publication);
+}
+
+static void mqtt_publications_free(mqtt_publications_t **list)
+{
+    mqtt_publications_t *cur, **head = list;
+
+    while (*list)
+    {
+        cur = *list;
+        *list = cur->next;
+        mqtt_publication_free(cur);
+    }
+    *head = NULL;
+}
+
+static void mqtt_publications_publish(mqtt_publications_t *list)
+{
+    for (; list; list = list->next)
+    {
+        ESP_LOGI(TAG, "Publishing from queue: %s = %.*s", list->topic,
+            list->len, list->payload);
+
+        mqtt_publish(list->topic, list->payload, list->len, list->qos,
+            list->retained);
+    }
+}
+
 int mqtt_subscribe(const char *topic, int qos, mqtt_on_message_received_cb_t cb,
     void *ctx, mqtt_free_ctx_cb_t free_cb)
 {
@@ -119,10 +179,15 @@ int mqtt_unsubscribe(const char *topic)
 int mqtt_publish(const char *topic, uint8_t *payload, size_t len, int qos,
     uint8_t retained)
 {
-    if (!is_connected)
-        return -1;
+    if (is_connected)
+        return esp_mqtt_publish(topic, payload, len, qos, retained) != true;
 
-    return esp_mqtt_publish(topic, payload, len, qos, retained) != true;
+    /* If we're currently not connected, queue publication */
+    ESP_LOGD(TAG, "MQTT is disconnected, adding publication to queue...");
+    mqtt_publication_add(&publications_list, topic, payload, len, qos,
+        retained);
+
+    return 0;
 }
 
 static void mqtt_status_cb(esp_mqtt_status_t status)
@@ -131,6 +196,8 @@ static void mqtt_status_cb(esp_mqtt_status_t status)
     case ESP_MQTT_STATUS_CONNECTED:
         ESP_LOGI(TAG, "MQTT client connected");
         is_connected = 1;
+        mqtt_publications_publish(publications_list);
+        mqtt_publications_free(&publications_list);
         if (on_connected_cb)
             on_connected_cb();
         break;
