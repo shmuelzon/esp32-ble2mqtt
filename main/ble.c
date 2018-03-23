@@ -376,6 +376,10 @@ static void gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
     {
         ble_device_t *device;
 
+        /* If scan was stopped before this device was found, ignore it */
+        if (!scan_requested)
+            break;
+
         if (param->scan_rst.search_evt != ESP_GAP_SEARCH_INQ_RES_EVT)
             break;
             
