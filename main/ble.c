@@ -101,9 +101,14 @@ int ble_scan_stop(void)
 
 int ble_connect(mac_addr_t mac)
 {
+    ble_device_t *dev = ble_device_find_by_mac(devices_list, mac);
+
+    if (!dev)
+        return -1;
+
     /* Stop scanning while attempting to connect */
     esp_ble_gap_stop_scanning();
-    return esp_ble_gattc_open(g_gattc_if, mac, true);
+    return esp_ble_gattc_open(g_gattc_if, mac, dev->addr_type, true);
 }
 
 static int _ble_disconnect(ble_device_t *dev)
@@ -390,7 +395,8 @@ static void gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
             break;
 
         /* Cache device information */
-        ble_device_add(&devices_list, param->scan_rst.bda, -1);
+        ble_device_add(&devices_list, param->scan_rst.bda,
+            param->scan_rst.ble_addr_type, -1);
 
         /* Notify app only on newly connected devices */
         if(on_device_discovered_cb)

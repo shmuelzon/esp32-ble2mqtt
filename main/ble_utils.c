@@ -83,7 +83,7 @@ char *gattc_event_to_str(esp_gattc_cb_event_t event)
     CASE_STR(ESP_GATTC_UNREG_FOR_NOTIFY_EVT);
     CASE_STR(ESP_GATTC_CONNECT_EVT);
     CASE_STR(ESP_GATTC_DISCONNECT_EVT);
-    CASE_STR(ESP_GATTC_READ_MUTIPLE_EVT);
+    CASE_STR(ESP_GATTC_READ_MULTIPLE_EVT);
     CASE_STR(ESP_GATTC_QUEUE_FULL_EVT);
     default: return "Invalid GATTC event";
     }
@@ -643,12 +643,13 @@ const char *ble_characteristic_name_get(ble_uuid_t uuid)
 }
 
 ble_device_t *ble_device_add(ble_device_t **list, mac_addr_t mac,
-    uint16_t conn_id)
+    esp_ble_addr_type_t addr_type, uint16_t conn_id)
 {
     ble_device_t *dev, **cur;
 
     dev = calloc(1, sizeof(*dev));
     memcpy(dev->mac, mac, sizeof(mac_addr_t));
+    dev->addr_type = addr_type;
     dev->conn_id = conn_id;
 
     for (cur = list; *cur; cur = &(*cur)->next);
