@@ -11,6 +11,8 @@
 
 /* Constants */
 static const char *TAG = "Config";
+static const char *config_file_name = "/spiffs/config.json";
+static const char *config_update_file_name = "/spiffs/config.json.update";
 static cJSON *config;
 
 /* Internal variables */
@@ -225,6 +227,46 @@ const char *config_wifi_password_get(void)
     return NULL;
 }
 
+/* Configuration Update */
+int config_update_begin(config_update_handle_t *handle)
+{
+    int fd;
+
+    if ((fd = open(config_update_file_name, O_WRONLY | O_CREAT | O_TRUNC)) < 0)
+        return -1;
+
+    *handle = fd;
+    return 0;
+}
+
+int config_update_write(config_update_handle_t handle, uint8_t *data,
+    size_t len)
+{
+    return write(handle, data, len) < 0;
+}
+
+int config_update_end(config_update_handle_t handle)
+{
+    struct stat st;
+
+    if (close(handle))
+        return -1;
+
+    if (stat(config_update_file_name, &st))
+        return -1;
+
+    if (st.st_size == 0)
+        return -1;
+
+    if (unlink(config_file_name))
+        return -1;
+
+    if (rename(config_update_file_name, config_file_name))
+        return -1;
+
+    return 0;
+}
+
 static char *read_file(const char *path)
 {
     int fd, len;
@@ -292,7 +334,7 @@ int config_initialize(void)
     ESP_ERROR_CHECK(esp_vfs_spiffs_register(&conf));
 
     /* Load config.json from SPIFFS */
-    if (!(config = load_json("/spiffs/config.json")))
+    if (!(config = load_json(config_file_name)))
         return -1;
 
     ESP_LOGI(TAG, "version: %s", config_version_get());

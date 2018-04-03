@@ -36,3 +36,30 @@ flash: $(SPIFFS_IMAGE)
 
 # Include SPIFFS offset + image in the flash command
 ESPTOOL_ALL_FLASH_ARGS += $(SPIFFS_OFFSET) $(SPIFFS_IMAGE)
+
+OTA_TARGET ?= BLE2MQTT
+OTA_FIRMWARE := $(BUILD_DIR_BASE)/$(PROJECT_NAME).bin
+OTA_CONFIG := $(PROJECT_PATH)/data/config.json
+MD5 := $(if $(subst Darwin,,$(shell uname)),md5sum,md5 -r)
+
+upload: $(OTA_FIRMWARE)
+	echo Uploading firmware $< to $(OTA_TARGET)
+	$(CONFIG_PYTHON) $(PROJECT_PATH)/ota.py -f $< \
+	  -v $(PROJECT_VER) -t $(OTA_TARGET) -n Firmware
+
+force-upload: $(OTA_FIRMWARE)
+	echo Uploading firmware $< to $(OTA_TARGET)
+	$(CONFIG_PYTHON) $(PROJECT_PATH)/ota.py -f $< \
+	  -v \"\" -t $(OTA_TARGET) -n Firmware
+
+upload-config: $(OTA_CONFIG)
+	echo Uploading configuration $< to $(OTA_TARGET)
+	$(CONFIG_PYTHON) $(PROJECT_PATH)/ota.py -f $< \
+	  -v $(word 1, $(shell $(MD5) $<)) -t $(OTA_TARGET) -n Config
+
+force-upload-config: $(OTA_CONFIG)
+	echo Uploading configuration $< to $(OTA_TARGET)
+	$(CONFIG_PYTHON) $(PROJECT_PATH)/ota.py -f $< \
+	  -v \"\" -t $(OTA_TARGET) -n Config
+
+.PHONY: upload force-upload upload-config force-upload-config

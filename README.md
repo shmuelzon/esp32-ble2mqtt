@@ -145,3 +145,23 @@ configuration:
       "aa:bb:cc:dd:ee:ff": 000000
     }
     ```
+
+## OTA
+
+It is possible to upgrade both firmware and configuration file over-the-air once
+an initial version was flashed via serial interface. To do so, execute:
+`make upload` or `make upload-config` accordingly.
+The above will upgrade all BLE2MQTT devices connected to the MQTT broker defined
+in the configuration file. It is also possible to upgrade a specific device by
+adding the `OTA_TARGET` variable to the above command set to the host name of
+the requested device, e.g.:
+```bash
+make upload OTA_TARGET=BLE2MQTT-470C
+```
+
+Note: In order to avoid unneeded upgrades, there is a mechanism in place to
+compare the new version with the one that resides on the flash. For the firmware
+image it's based on the git tag and for the configuration file it's an MD5 hash
+of its contents. In order to force an upgrade regardless of the currently
+installed version, run `make force-upload` or `make force-upload-config`
+respectively.

@@ -4,3 +4,6 @@
 [submodule "mkspiffs"]
 	path = mkspiffs
 	url = https://github.com/igrr/mkspiffs.git
+[submodule "components/esp-request"]
+	path = components/esp-request
+	url = https://github.com/tuanpmt/esp-request

@@ -2,9 +2,11 @@
 #include "ble.h"
 #include "ble_utils.h"
 #include "mqtt.h"
+#include "ota.h"
 #include "wifi.h"
 #include <esp_err.h>
 #include <esp_log.h>
+#include <esp_system.h>
 #include <nvs.h>
 #include <nvs_flash.h>
 #include <string.h>
@@ -31,10 +33,68 @@ static char *device_name_get(void)
     return name;
 }
 
+/* OTA functions */
+static void ota_on_completed(ota_err_t err)
+{
+    ESP_LOGI(TAG, "Update completed: %s", ota_err_to_str(err));
+
+    /* All done, restart */
+    if (err == OTA_ERR_SUCCESS)
+        esp_restart();
+}
+
+static void ota_on_mqtt(const char *topic, const uint8_t *payload, size_t len,
+    void *ctx)
+{
+    char *url = malloc(len + 1);
+    ota_type_t type = (ota_type_t)ctx;
+    ota_err_t err;
+
+    memcpy(url, payload, len);
+    url[len] = '\0';
+    ESP_LOGI(TAG, "Starting %s update from %s",
+        type == OTA_TYPE_FIRMWARE ? "firmware" : "configuration", url);
+
+    if ((err = ota_start(type, url)) != OTA_ERR_SUCCESS)
+        ESP_LOGE(TAG, "Failed updating: %s", ota_err_to_str(err));
+
+    free(url);
+}
+
+static void ota_subscribe(void)
+{
+    char topic[27];
+
+    /* Register for both a specific topic for this device and a general one */
+    sprintf(topic, "%s/OTA/Firmware", device_name_get());
+    mqtt_subscribe(topic, 0, ota_on_mqtt, (void *)OTA_TYPE_FIRMWARE, NULL);
+    mqtt_subscribe("BLE2MQTT/OTA/Firmware", 0, ota_on_mqtt,
+        (void *)OTA_TYPE_FIRMWARE, NULL);
+
+    sprintf(topic, "%s/OTA/Config", device_name_get());
+    mqtt_subscribe(topic, 0, ota_on_mqtt, (void *)OTA_TYPE_CONFIG, NULL);
+    mqtt_subscribe("BLE2MQTT/OTA/Config", 0, ota_on_mqtt,
+        (void *)OTA_TYPE_CONFIG, NULL);
+}
+
+static void ota_unsubscribe(void)
+{
+    char topic[27];
+
+    sprintf(topic, "%s/OTA/Firmware", device_name_get());
+    mqtt_unsubscribe(topic);
+    mqtt_unsubscribe("BLE2MQTT/OTA/Firmware");
+
+    sprintf(topic, "%s/OTA/Config", device_name_get());
+    mqtt_unsubscribe(topic);
+    mqtt_unsubscribe("BLE2MQTT/OTA/Config");
+}
+
 static void cleanup(void)
 {
     ble_disconnect_all();
     ble_scan_stop();
+    ota_unsubscribe();
 }
 
 /* Wi-Fi callback functions */
@@ -58,6 +118,7 @@ static void wifi_on_disconnected(void)
 static void mqtt_on_connected(void)
 {
     ESP_LOGI(TAG, "Connected to MQTT, scanning for BLE devices");
+    ota_subscribe();
     ble_scan_start();
 }
 
@@ -265,6 +326,10 @@ void app_main()
 
     /* Init configuration */
     ESP_ERROR_CHECK(config_initialize());
+
+    /* Init OTA */
+    ota_initialize();
+    ota_set_on_completed_cb(ota_on_completed);
 
     /* Init Wi-Fi */
     ESP_ERROR_CHECK(wifi_initialize());
