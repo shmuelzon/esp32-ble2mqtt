@@ -23,12 +23,16 @@ clean:
 $(MKSPIFFS):
 	echo $(shell make -C $(PROJECT_PATH)/mkspiffs)
 
+SPIFFS_PARTITION=$(shell grep "^storage" partitions.csv | sed 's/,//g')
+SPIFFS_OFFSET=$(word 4, $(SPIFFS_PARTITION))
+SPIFFS_SIZE=$(word 5, $(SPIFFS_PARTITION))
+
 # Build SPIFFS image
-$(SPIFFS_IMAGE): $(PROJECT_PATH)/data $(MKSPIFFS)
-	$(MKSPIFFS) -c $< -b 4096 -p 256 -s 0x100000 $@
+$(SPIFFS_IMAGE): $(PROJECT_PATH)/data $(MKSPIFFS) partitions.csv
+	$(MKSPIFFS) -c $< -b 4096 -p 256 -s $(SPIFFS_SIZE) $@
 
 # Need to generate SPIFFS image before flashing
 flash: $(SPIFFS_IMAGE)
 
 # Include SPIFFS offset + image in the flash command
-ESPTOOL_ALL_FLASH_ARGS += 0x190000 $(SPIFFS_IMAGE)
+ESPTOOL_ALL_FLASH_ARGS += $(SPIFFS_OFFSET) $(SPIFFS_IMAGE)
