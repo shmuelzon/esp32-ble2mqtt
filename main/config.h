@@ -25,6 +25,7 @@ const char *config_mqtt_set_suffix_get(void);
 const char *config_wifi_ssid_get(void);
 const char *config_wifi_password_get(void);
 
+char *config_version_get(void);
 int config_initialize(void);
 
 #endif

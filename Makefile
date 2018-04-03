@@ -4,6 +4,8 @@
 #
 
 PROJECT_NAME := ble2mqtt
+PROJECT_VER := $(shell git describe --always --tags --dirty)
+export PROJECT_VER
 
 COMPONENT_ADD_INCLUDEDIRS := components/include
 

@@ -1,4 +1,5 @@
 #include "config.h"
+#include <mbedtls/md5.h>
 #include <esp_err.h>
 #include <esp_log.h>
 #include <esp_spiffs.h>
@@ -11,6 +12,9 @@
 /* Constants */
 static const char *TAG = "Config";
 static cJSON *config;
+
+/* Internal variables */
+static char config_version[33];
 
 /* BLE Configuration*/
 static cJSON *config_ble_get_name_by_uuid(uint8_t is_service,
@@ -252,7 +256,8 @@ static char *read_file(const char *path)
 
 static cJSON *load_json(const char *path)
 {
-    char *str = read_file(path);
+    char *p, *str = read_file(path);
+    uint8_t i, hash[16];
     cJSON *json;
 
     if (!str)
@@ -260,8 +265,18 @@ static cJSON *load_json(const char *path)
 
     json = cJSON_Parse(str);
 
+    /* Calculate MD5 hash as config version */
+    mbedtls_md5((unsigned char *)str, strlen(str), hash);
+    for (i = 0, p = config_version; i < 16; i++)
+        p += sprintf(p, "%02x", hash[i]);
+
     free(str);
     return json;
+}
+
+char *config_version_get(void)
+{
+    return config_version;
 }
 
 int config_initialize(void)
@@ -280,5 +295,6 @@ int config_initialize(void)
     if (!(config = load_json("/spiffs/config.json")))
         return -1;
 
+    ESP_LOGI(TAG, "version: %s", config_version_get());
     return 0;
 }

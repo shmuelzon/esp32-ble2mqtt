@@ -257,6 +257,8 @@ void app_main()
     }
     ESP_ERROR_CHECK(ret);
 
+    ESP_LOGI(TAG, "Version: %s", BLE2MQTT_VER);
+
     /* Init configuration */
     ESP_ERROR_CHECK(config_initialize());
 
