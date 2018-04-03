@@ -31,6 +31,12 @@ static char *device_name_get(void)
     return name;
 }
 
+static void cleanup(void)
+{
+    ble_disconnect_all();
+    ble_scan_stop();
+}
+
 /* Wi-Fi callback functions */
 static void wifi_on_connected(void)
 {
@@ -45,8 +51,7 @@ static void wifi_on_disconnected(void)
     ESP_LOGI(TAG, "Disonnected from WiFi, stopping MQTT");
     mqtt_disconnect();
     /* We don't get notified when manually stopping MQTT */
-    ble_disconnect_all();
-    ble_scan_stop();
+    cleanup();
 }
 
 /* MQTT callback functions */
@@ -59,8 +64,7 @@ static void mqtt_on_connected(void)
 static void mqtt_on_disconnected(void)
 {
     ESP_LOGI(TAG, "Disonnected from MQTT, stopping BLE");
-    ble_disconnect_all();
-    ble_scan_stop();
+    cleanup();
     mqtt_connect(config_mqtt_host_get(), config_mqtt_port_get(),
         config_mqtt_client_id_get(), config_mqtt_username_get(),
         config_mqtt_password_get());
