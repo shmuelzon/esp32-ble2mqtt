@@ -240,7 +240,7 @@ int ota_start(ota_type_t type, const char *url)
     ota_ctx.url = strdup(url);
     ota_ctx.bytes_written = 0;
 
-    xTaskCreate(&ota_task, "ota_task", 8192, NULL, 5, NULL);
+    xTaskCreatePinnedToCore(ota_task, "ota_task", 8192, NULL, 5, NULL, 1);
 
     return 0;
 }
