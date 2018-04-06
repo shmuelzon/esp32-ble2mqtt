@@ -41,6 +41,8 @@ static void ota_on_completed(ota_err_t err)
     /* All done, restart */
     if (err == OTA_ERR_SUCCESS)
         esp_restart();
+    else
+        ble_scan_start();
 }
 
 static void ota_on_mqtt(const char *topic, const uint8_t *payload, size_t len,
@@ -58,6 +60,8 @@ static void ota_on_mqtt(const char *topic, const uint8_t *payload, size_t len,
     if ((err = ota_start(type, url)) != OTA_ERR_SUCCESS)
         ESP_LOGE(TAG, "Failed updating: %s", ota_err_to_str(err));
 
+    ble_disconnect_all();
+    ble_scan_stop();
     free(url);
 }
 
