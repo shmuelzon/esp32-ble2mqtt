@@ -362,7 +362,7 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
                 double d;
                 uint8_t b[8];
             } tmp;
-            memcpy(&tmp.d, tmp.b, 8);
+            memcpy(&tmp.b, &data[i], 8);
 
             p += sprintf(p, "%f,", tmp.d);
 
