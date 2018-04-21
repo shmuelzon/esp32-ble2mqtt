@@ -1,5 +1,4 @@
 #include "ble.h"
-#include <freertos/FreeRTOSConfig.h> /* Needed bt esp_bt.h */
 #include <esp_bt.h>
 #include <esp_bt_main.h>
 #include <esp_gap_ble_api.h>
@@ -8,6 +7,8 @@
 #include <esp_gatt_common_api.h>
 #include <esp_err.h>
 #include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/timers.h>
 #include <string.h>
 
 /* Constants */
@@ -35,10 +36,27 @@ static esp_ble_scan_params_t ble_scan_params = {
     .scan_window = 16, /* 16 * 0.625ms = 10ms */
 };
 
+/* Types */
+typedef enum {
+    BLE_OPERATION_TYPE_READ,
+    BLE_OPERATION_TYPE_WRITE,
+    BLE_OPERATION_TYPE_WRITE_CHAR,
+} ble_operation_type_t;
+
+typedef struct ble_operation_t {
+    struct ble_operation_t *next;
+    ble_operation_type_t type;
+    ble_device_t *device;
+    ble_characteristic_t *characteristic;
+    size_t len;
+    uint8_t *value;
+} ble_operation_t;
+
 /* Internal state */
 static uint8_t scan_requested = 0;
 static esp_gatt_if_t g_gattc_if = ESP_GATT_IF_NONE;
 static ble_device_t *devices_list = NULL;
+static ble_operation_t *operation_queue = NULL;
 
 /* Callback functions */
 static ble_on_device_discovered_cb_t on_device_discovered_cb = NULL;
@@ -235,6 +253,94 @@ int ble_foreach_characteristic(mac_addr_t mac,
     return 0;
 }
 
+static inline void ble_operation_perform(ble_operation_t *operation)
+{
+    switch (operation->type)
+    {
+    case BLE_OPERATION_TYPE_READ:
+        esp_ble_gattc_read_char(g_gattc_if, operation->device->conn_id,
+            operation->characteristic->handle, ESP_GATT_AUTH_REQ_NONE);
+        break;
+    case BLE_OPERATION_TYPE_WRITE:
+        esp_ble_gattc_write_char(g_gattc_if, operation->device->conn_id,
+            operation->characteristic->handle, operation->len, operation->value,
+            ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
+        break;
+    case BLE_OPERATION_TYPE_WRITE_CHAR:
+        esp_ble_gattc_write_char_descr(g_gattc_if, operation->device->conn_id,
+            operation->characteristic->client_config_handle, operation->len,
+            operation->value,
+            ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
+        break;
+    }
+
+    if (operation->len)
+        free(operation->value);
+    free(operation);
+}
+
+static void ble_operation_dequeue(ble_operation_t **queue)
+{
+    ble_operation_t *operation = *queue;
+
+    /* Queue is empty, nothing to do */
+    if (!operation)
+        return;
+
+    *queue = operation->next;
+    ESP_LOGD(TAG, "Dequeue: type: %d, device: %s, char: %s, len: %u, val: %p",
+        operation->type, mactoa(operation->device->mac),
+        uuidtoa(operation->characteristic->uuid), operation->len,
+        operation->value);
+    ble_operation_perform(operation);
+}
+
+static void ble_queue_timer_cb(TimerHandle_t xTimer)
+{
+    ESP_LOGD(TAG, "Queue timer expired");
+    ble_operation_dequeue(&operation_queue);
+}
+
+static void ble_operation_enqueue(ble_operation_t **queue,
+    ble_operation_type_t type, ble_device_t *device,
+    ble_characteristic_t *characteristic, size_t len, const uint8_t *value)
+{
+    static TimerHandle_t timer = NULL;
+    ble_operation_t **iter, *operation = malloc(sizeof(*operation));
+
+    operation->next = NULL;
+    operation->type = type;
+    operation->device = device;
+    operation->characteristic = characteristic;
+    operation->len = len;
+    if (len)
+    {
+        operation->value = malloc(len);
+        memcpy(operation->value, value, len);
+    }
+    else
+        operation->value = NULL;
+
+    ESP_LOGD(TAG, "Enqueue: type: %d, device: %s, char: %s, len: %u, val: %p",
+        operation->type, mactoa(operation->device->mac),
+        uuidtoa(operation->characteristic->uuid), operation->len,
+        operation->value);
+
+    for (iter = queue; *iter; iter = &(*iter)->next);
+    *iter = operation;
+
+    /* Create timer */
+    if (timer == NULL)
+    {
+        timer = xTimerCreate("ble_queue", pdMS_TO_TICKS(500), pdFALSE, NULL,
+            ble_queue_timer_cb);
+    }
+
+    /* First item in queue or timer is already running, reset timer */
+    if (!(*queue)->next || xTimerIsTimerActive(timer))
+        xTimerReset(timer, 0);
+}
+
 int ble_characteristic_read(mac_addr_t mac, ble_uuid_t service_uuid,
     ble_uuid_t characteristic_uuid)
 {
@@ -257,8 +363,10 @@ int ble_characteristic_read(mac_addr_t mac, ble_uuid_t service_uuid,
     if (!(characteristic->properties & CHAR_PROP_READ))
         return -1;
 
-    return esp_ble_gattc_read_char(g_gattc_if, device->conn_id,
-        characteristic->handle, ESP_GATT_AUTH_REQ_NONE);
+    ble_operation_enqueue(&operation_queue, BLE_OPERATION_TYPE_READ, device,
+        characteristic, 0, NULL);
+
+    return 0;
 }
 
 int ble_characteristic_write(mac_addr_t mac, ble_uuid_t service_uuid,
@@ -283,9 +391,10 @@ int ble_characteristic_write(mac_addr_t mac, ble_uuid_t service_uuid,
     if (!(characteristic->properties & CHAR_PROP_WRITE))
         return -1;
 
-    return esp_ble_gattc_write_char(g_gattc_if, device->conn_id,
-        characteristic->handle, value_len, (uint8_t *)value,
-        ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
+    ble_operation_enqueue(&operation_queue, BLE_OPERATION_TYPE_WRITE, device,
+        characteristic, value_len, value);
+
+    return 0;
 }
 
 int ble_characteristic_notify_register(mac_addr_t mac, ble_uuid_t service_uuid,
@@ -320,9 +429,10 @@ int ble_characteristic_notify_register(mac_addr_t mac, ble_uuid_t service_uuid,
         return -1;
     }
 
-    return esp_ble_gattc_write_char_descr(g_gattc_if, device->conn_id,
-        characteristic->client_config_handle, sizeof(notify_en),
-        (uint8_t *)&notify_en, ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
+    ble_operation_enqueue(&operation_queue, BLE_OPERATION_TYPE_WRITE_CHAR,
+        device, characteristic, sizeof(notify_en), (uint8_t *)&notify_en);
+
+    return 0;
 }
 
 int ble_characteristic_notify_unregister(mac_addr_t mac,
@@ -433,6 +543,8 @@ static void gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
     esp_ble_gattc_cb_param_t *param)
 {
+    uint8_t need_dequeue = 0;
+
     ESP_LOGD(TAG, "Received GATTC event %d (%s), gattc_if %d", event,
         gattc_event_to_str(event), gattc_if);
 
@@ -520,6 +632,8 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
         ble_service_t *service;
         ble_characteristic_t *characteristic;
 
+        need_dequeue = 1;
+
         if (!device)
             break;
 
@@ -538,6 +652,7 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
                 /* Try again */
                 esp_ble_gattc_read_char(g_gattc_if, param->read.conn_id,
                         param->read.handle, ESP_GATT_AUTH_REQ_NONE);
+                need_dequeue = 0;
             }
             else
             {
@@ -556,11 +671,15 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
         break;
     }
     case ESP_GATTC_WRITE_CHAR_EVT:
+        need_dequeue = 1;
         if (param->write.status != ESP_GATT_OK)
         {
             ESP_LOGE(TAG, "Failed writing characteristic, status = 0x%x",
                 param->write.status);
         }
+        break;
+    case ESP_GATTC_WRITE_DESCR_EVT:
+        need_dequeue = 1;
         break;
     case ESP_GATTC_REG_FOR_NOTIFY_EVT:
         if (param->reg_for_notify.status != ESP_GATT_OK)
@@ -590,6 +709,9 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
         ESP_LOGD(TAG, "GATTC event %d wasn't handled", event);
         break;
     }
+
+    if (need_dequeue)
+        ble_operation_dequeue(&operation_queue);
 }
 
 int ble_initialize(void)
