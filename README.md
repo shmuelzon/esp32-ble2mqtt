@@ -93,9 +93,11 @@ configuration:
     "//Optional: 'whitelist' or 'blacklist'": [],
     "services": {
       "definitions": {},
+      "//Optional: 'whitelist' or 'blacklist'": []
     },
     "characteristics": {
       "definitions": {},
+      "//Optional: 'whitelist' or 'blacklist'": []
     },
     "passkeys": {}
   }
@@ -114,7 +116,8 @@ configuration:
 * `services` - Add additional services or override a existing definitions to the
   ones grabbed automatically during build from http://www.bluetooth.org. Each
   service can include a `name` field which will be used in the MQTT topic
-  instead of its UUID. For example:
+  instead of its UUID. In addition, it's possible to define a white/black list
+  for discovered services. For example:
 
     ```json
     "services": {
@@ -122,7 +125,10 @@ configuration:
         "00002f00-0000-1000-8000-00805f9b34fb": {
           "name": "Relay Service"
         }
-      }
+      },
+      "blacklist": [
+        "0000180a-0000-1000-8000-00805f9b34fb"
+      ]
     }
     ```
 * `characteristics` - Add additional characteristics or override existing
@@ -130,7 +136,8 @@ configuration:
   http://www.bluetooth.org. Each characteristic can include a `name` field which
   will be used in the MQTT topic instead of its UUID and a `types` array
   defining how to parse the byte array reflecting the characteristic's value.
-  For example:
+  In addition, it's possible to define a white/black list for discovered
+  characteristics. For example:
 
     ```json
     "characteristics": {
@@ -141,7 +148,10 @@ configuration:
             "boolean"
           ]
         }
-      }
+      },
+      "blacklist": [
+        "00002a29-0000-1000-8000-00805f9b34fb"
+      ]
     }
     ```
 * `passkeys` - An object containing the passkey (number 000000~999999) that

@@ -97,11 +97,10 @@ cJSON *json_find_in_array(cJSON *arr, const char *item)
     return NULL;
 }
 
-uint8_t config_ble_should_connect(const char *mac)
+static uint8_t json_is_in_lists(cJSON *base, const char *item)
 {
-    cJSON *ble = cJSON_GetObjectItemCaseSensitive(config, "ble");
-    cJSON *whitelist = cJSON_GetObjectItemCaseSensitive(ble, "whitelist");
-    cJSON *blacklist = cJSON_GetObjectItemCaseSensitive(ble, "blacklist");
+    cJSON *whitelist = cJSON_GetObjectItemCaseSensitive(base, "whitelist");
+    cJSON *blacklist = cJSON_GetObjectItemCaseSensitive(base, "blacklist");
     uint8_t action = whitelist ? 1 : 0;
     cJSON *list = whitelist ? : blacklist;
 
@@ -109,7 +108,30 @@ uint8_t config_ble_should_connect(const char *mac)
     if (!list)
         return 1;
 
-    return json_find_in_array(list, mac) ? action : !action;
+    return json_find_in_array(list, item) ? action : !action;
+}
+
+uint8_t config_ble_characteristic_should_include(const char *uuid)
+{
+    cJSON *ble = cJSON_GetObjectItemCaseSensitive(config, "ble");
+    cJSON *characteristics = cJSON_GetObjectItemCaseSensitive(ble,
+        "characteristics");
+
+    return json_is_in_lists(characteristics, uuid);
+}
+
+uint8_t config_ble_service_should_include(const char *uuid)
+{
+    cJSON *ble = cJSON_GetObjectItemCaseSensitive(config, "ble");
+    cJSON *services = cJSON_GetObjectItemCaseSensitive(ble, "services");
+
+    return json_is_in_lists(services, uuid);
+}
+
+uint8_t config_ble_should_connect(const char *mac)
+{
+    cJSON *ble = cJSON_GetObjectItemCaseSensitive(config, "ble");
+    return json_is_in_lists(ble, mac);
 }
 
 uint32_t config_ble_passkey_get(const char *mac)
