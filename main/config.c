@@ -23,8 +23,9 @@ static cJSON *config_ble_get_name_by_uuid(uint8_t is_service,
     const char *uuid, const char *field_name)
 {
     cJSON *ble = cJSON_GetObjectItemCaseSensitive(config, "ble");
-    cJSON *list = cJSON_GetObjectItemCaseSensitive(ble,
+    cJSON *type = cJSON_GetObjectItemCaseSensitive(ble,
         is_service ?  "services" : "characteristics");
+    cJSON *list = cJSON_GetObjectItemCaseSensitive(type, "definitions");
 
     /* Check config.json for override values */
     cJSON *obj = cJSON_GetObjectItemCaseSensitive(list, uuid);

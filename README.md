@@ -91,8 +91,12 @@ configuration:
 {
   "ble": {
     "//Optional: 'whitelist' or 'blacklist'": [],
-    "services": {},
-    "characteristics": {},
+    "services": {
+      "definitions": {},
+    },
+    "characteristics": {
+      "definitions": {},
+    },
     "passkeys": {}
   }
 }
@@ -114,8 +118,10 @@ configuration:
 
     ```json
     "services": {
-      "00002f00-0000-1000-8000-00805f9b34fb": {
-        "name": "Relay Service"
+      "definitions": {
+        "00002f00-0000-1000-8000-00805f9b34fb": {
+          "name": "Relay Service"
+        }
       }
     }
     ```
@@ -128,11 +134,13 @@ configuration:
 
     ```json
     "characteristics": {
-      "00002f01-0000-1000-8000-00805f9b34fb": {
-        "name": "Relay State",
-        "types": [
-          "boolean"
-        ]
+      "definitions": {
+        "00002f01-0000-1000-8000-00805f9b34fb": {
+          "name": "Relay State",
+          "types": [
+            "boolean"
+          ]
+        }
       }
     }
     ```
