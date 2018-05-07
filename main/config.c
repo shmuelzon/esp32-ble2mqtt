@@ -166,6 +166,13 @@ const char *config_mqtt_host_get(void)
 
 uint16_t config_mqtt_port_get(void)
 {
+    cJSON *mqtt = cJSON_GetObjectItemCaseSensitive(config, "mqtt");
+    cJSON *server = cJSON_GetObjectItemCaseSensitive(mqtt, "server");
+    cJSON *port = cJSON_GetObjectItemCaseSensitive(server, "port");
+
+    if (cJSON_IsNumber(port))
+        return port->valuedouble;
+
     return 1883;
 }
 
