@@ -34,7 +34,7 @@ static char *device_name_get(void)
 }
 
 /* OTA functions */
-static void ota_on_completed(ota_err_t err)
+static void ota_on_completed(ota_type_t type, ota_err_t err)
 {
     ESP_LOGI(TAG, "Update completed: %s", ota_err_to_str(err));
 

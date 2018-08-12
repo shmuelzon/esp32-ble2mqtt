@@ -15,6 +15,7 @@ static const char *TAG = "OTA";
 
 /* Types */
 typedef struct {
+    ota_type_t type;
     int (*begin)(void **handle);
     int (*write)(void *handle, uint8_t *data, size_t len);
     int (*end)(void *handle);
@@ -75,6 +76,7 @@ static char *ota_config_version_get(void)
 }
 
 static ota_ops_t ota_config_ops = {
+    .type = OTA_TYPE_CONFIG,
     .begin = ota_config_begin,
     .write = ota_config_write,
     .end = ota_config_end,
@@ -164,6 +166,7 @@ static char *ota_firmware_version_get(void)
 }
 
 static ota_ops_t ota_firmware_ops = {
+    .type = OTA_TYPE_FIRMWARE,
     .begin = ota_firmware_begin,
     .write = ota_firmware_write,
     .end = ota_firmware_end,
@@ -221,7 +224,7 @@ static void ota_task(void *pvParameter)
         err = OTA_ERR_NO_CHANGE;
 
     if (on_completed_cb)
-        on_completed_cb(err);
+        on_completed_cb(ota_ctx.ops->type, err);
 
     free(ota_ctx.url);
     ota_ctx.url = NULL;

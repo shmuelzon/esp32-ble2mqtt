@@ -18,7 +18,7 @@ typedef enum {
 } ota_err_t;
 
 /* Event callback types */
-typedef void (*ota_on_completed_cb_t)(ota_err_t err);
+typedef void (*ota_on_completed_cb_t)(ota_type_t type, ota_err_t err);
 
 /* Event handlers */
 void ota_set_on_completed_cb(ota_on_completed_cb_t cb);
