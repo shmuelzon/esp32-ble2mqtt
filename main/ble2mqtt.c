@@ -40,7 +40,11 @@ static void ota_on_completed(ota_type_t type, ota_err_t err)
 
     /* All done, restart */
     if (err == OTA_ERR_SUCCESS)
+    {
+        if (type == OTA_TYPE_CONFIG)
+            ble_clear_bonding_info();
         esp_restart();
+    }
     else
         ble_scan_start();
 }

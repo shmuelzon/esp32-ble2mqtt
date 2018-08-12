@@ -100,6 +100,24 @@ void ble_set_on_passkey_requested_cb(ble_on_passkey_requested_cb_t cb)
     on_passkey_requested_cb = cb;
 }
 
+void ble_clear_bonding_info(void)
+{
+    int i, dev_num = esp_ble_get_bond_device_num();
+
+    esp_ble_bond_dev_t *dev_list = (esp_ble_bond_dev_t *)malloc(
+        sizeof(esp_ble_bond_dev_t) * dev_num);
+
+    esp_ble_get_bond_device_list(&dev_num, dev_list);
+    for (i = 0; i < dev_num; i++)
+        esp_ble_remove_bond_device(dev_list[i].bd_addr);
+
+    /* Block until all bonding information is removed */
+    while (esp_ble_get_bond_device_num())
+        vTaskDelay(500 / portTICK_PERIOD_MS);
+
+    free(dev_list);
+}
+
 int ble_scan_start(void)
 {
     ESP_LOGD(TAG, "Starting BLE scan");

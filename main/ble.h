@@ -39,6 +39,8 @@ void ble_set_on_device_characteristic_value_cb(
 void ble_set_on_passkey_requested_cb(ble_on_passkey_requested_cb_t cb);
 
 /* BLE Operations */
+void ble_clear_bonding_info(void);
+
 int ble_scan_start(void);
 int ble_scan_stop(void);
 
