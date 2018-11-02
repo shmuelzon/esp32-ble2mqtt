@@ -157,12 +157,27 @@ static void mqtt_publications_publish(mqtt_publications_t *list)
 int mqtt_subscribe(const char *topic, int qos, mqtt_on_message_received_cb_t cb,
     void *ctx, mqtt_free_ctx_cb_t free_cb)
 {
+    uint8_t retries = 0;
+
     if (!is_connected)
         return -1;
 
     ESP_LOGD(TAG, "Subscribing to %s", topic);
+    while ((esp_mqtt_subscribe(topic, qos) != true) && retries < 3)
+    {
+        ESP_LOGI(TAG, "Failed subscribing to %s (retries: %u), trying again...",
+            topic, retries);
+        retries++;
+    }
+
+    if (retries == 3)
+    {
+        ESP_LOGE(TAG, "Failed subscribing to %s", topic);
+        return -1;
+    }
+
     mqtt_subscription_add(&subscription_list, topic, cb, ctx, free_cb);
-    return esp_mqtt_subscribe(topic, qos) != true;
+    return 0;
 }
 
 int mqtt_unsubscribe(const char *topic)
