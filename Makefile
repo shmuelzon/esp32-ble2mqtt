@@ -16,7 +16,9 @@ SPIFFS_IMAGE=$(BUILD_DIR_BASE)/spiffs.bin
 
 # Note: The $(shell ...) hack is to start a clean make session
 # Clean mkspiffs
-clean:
+clean: clean_spiffs
+
+clean_spiffs:
 	echo $(shell make -C $(PROJECT_PATH)/mkspiffs clean)
 
 # Build mkspiffs utility
