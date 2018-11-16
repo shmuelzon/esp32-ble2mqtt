@@ -1,14 +1,15 @@
 # ESP32-BLE2MQTT
 
-This project aims to be a BLE to MQTT bridge, i.e. expose BLE GATT
-characteristics as MQTT topics for bidirectional communication. It's developed
-for the ESP32 SoC and is based on
-[ESP-IDF](https://github.com/espressif/esp-idf) release 3.0.
+This project is a BLE to MQTT bridge, i.e. expose BLE GATT characteristics as
+MQTT topics for bidirectional communication. It's developed for the ESP32 SoC
+and is based on [ESP-IDF](https://github.com/espressif/esp-idf) release 3.0.
 
 **Important:** Please note that recent versions of ESP-IDF have proven to be
-very unstable for be with regards to both WiFi and BLE performance. To that end,
-I suggest using commit [139d49894c473bd34ab6e9515e85d3f6871a30c7](https://github.com/espressif/esp-idf/commit/139d49894c473bd34ab6e9515e85d3f6871a30c7)
-of the ESP-IDF and compile this project with it.
+very unstable for me with regards to both WiFi and BLE performance. From my
+experience, using commit [139d49894c473bd34ab6e9515e85d3f6871a30c7](https://github.com/espressif/esp-idf/commit/139d49894c473bd34ab6e9515e85d3f6871a30c7)
+of the ESP-IDF and compiling this project with it offer better performance.
+This will hopefully change in the future and I will re-evaluate new ESP-IDF
+releases when they're available.
 
 For example, if a device with a MAC address of `a0:e6:f8:50:72:53` exposes the
 [0000180f-0000-1000-8000-00805f9b34fb service](https://developer.bluetooth.org/gatt/services/Pages/ServiceViewer.aspx?u=org.bluetooth.service.battery_service.xml)
