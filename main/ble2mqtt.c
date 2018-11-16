@@ -140,14 +140,39 @@ static void mqtt_on_disconnected(void)
 }
 
 /* BLE functions */
+static void ble_on_mqtt_connected_cb(const char *topic, const uint8_t *payload,
+    size_t len, void *ctx)
+{
+    char new_topic[28];
+
+    if (!strncmp((char *)payload, "true", len))
+        return;
+
+    /* Someone published our device is disconnected, set them straight */
+    sprintf(new_topic, "%s/Connected", (char *)ctx);
+    mqtt_publish(new_topic, (uint8_t *)"true", 4, config_mqtt_qos_get(),
+        config_mqtt_retained_get());
+}
+
 static void ble_publish_connected(mac_addr_t mac, uint8_t is_connected)
 {
     char topic[28];
 
     sprintf(topic, "%s/Connected", mactoa(mac));
+
+    if (!is_connected)
+        mqtt_unsubscribe(topic);
+
     mqtt_publish(topic, (uint8_t *)(is_connected ? "true" : "false"),
         is_connected ? 4 : 5, config_mqtt_qos_get(),
         config_mqtt_retained_get());
+
+    /* Subscribe for other devices claiming this device is disconnected */
+    if (is_connected)
+    {
+        mqtt_subscribe(topic, config_mqtt_qos_get(), ble_on_mqtt_connected_cb,
+            strdup(mactoa(mac)), free);
+    }
 }
 
 static mqtt_ctx_t *ble_ctx_gen(mac_addr_t mac, ble_uuid_t service,
