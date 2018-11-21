@@ -77,6 +77,7 @@ The `mqtt` section below includes the following entries:
       "retain": true
     },
     "topics" :{
+      "prefix": "",
       "get_suffix": "/Get",
       "set_suffix": "/Set"
     }
@@ -86,6 +87,8 @@ The `mqtt` section below includes the following entries:
 * `server` - MQTT connection parameters
 * `publish` - Configuration for publishing topics
 * `topics`
+  * `prefix` - Which prefix should be added to all MQTT value topics. OTA
+    related topics are already prefixed and are not affected by this value
   * `get_suffix` - Which suffix should be added to the MQTT value topic in order
     to issue a read request from the characteristic
   * `set_suffix` - Which suffix should be added to the MQTT value topic in order

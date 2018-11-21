@@ -143,22 +143,24 @@ static void mqtt_on_disconnected(void)
 static void ble_on_mqtt_connected_cb(const char *topic, const uint8_t *payload,
     size_t len, void *ctx)
 {
-    char new_topic[28];
+    char new_topic[MAX_TOPIC_LEN];
 
     if (!strncmp((char *)payload, "true", len))
         return;
 
     /* Someone published our device is disconnected, set them straight */
-    sprintf(new_topic, "%s/Connected", (char *)ctx);
+    snprintf(new_topic, MAX_TOPIC_LEN, "%s%s/Connected",
+        config_mqtt_prefix_get(), (char *)ctx);
     mqtt_publish(new_topic, (uint8_t *)"true", 4, config_mqtt_qos_get(),
         config_mqtt_retained_get());
 }
 
 static void ble_publish_connected(mac_addr_t mac, uint8_t is_connected)
 {
-    char topic[28];
+    char topic[MAX_TOPIC_LEN];
 
-    sprintf(topic, "%s/Connected", mactoa(mac));
+    snprintf(topic, MAX_TOPIC_LEN, "%s%s/Connected", config_mqtt_prefix_get(),
+        mactoa(mac));
 
     if (!is_connected)
         mqtt_unsubscribe(topic);
@@ -224,9 +226,9 @@ static char *ble_topic(mac_addr_t mac, ble_uuid_t service_uuid,
     static char topic[MAX_TOPIC_LEN];
     int i;
 
-    i = sprintf(topic, "%s/%s", mactoa(mac),
-        ble_service_name_get(service_uuid));
-    sprintf(topic + i, "/%s",
+    i = snprintf(topic, MAX_TOPIC_LEN, "%s%s/%s", config_mqtt_prefix_get(),
+        mactoa(mac), ble_service_name_get(service_uuid));
+    snprintf(topic + i, MAX_TOPIC_LEN - i, "/%s",
         ble_characteristic_name_get(characteristic_uuid));
 
     return topic;

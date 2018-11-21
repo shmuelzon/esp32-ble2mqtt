@@ -224,6 +224,11 @@ const char *config_mqtt_topics_get(const char *param_name, const char *def)
     return def;
 }
 
+const char *config_mqtt_prefix_get(void)
+{
+    return config_mqtt_topics_get("prefix", "");
+}
+
 const char *config_mqtt_get_suffix_get(void)
 {
     return config_mqtt_topics_get("get_suffix", "/Get");
