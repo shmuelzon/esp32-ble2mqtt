@@ -422,7 +422,7 @@ uint8_t *atochar(ble_uuid_t uuid, const char *data, size_t len, size_t *ret_len)
     characteristic_type_t *types = ble_get_characteristic_types(uuid);
     static uint8_t buf[512];
     uint8_t *p = buf;
-    char *str = strdup(data);
+    char *str = strndup(data, len);
     char *val = strtok(str, ",");
 
     for (; types && *types != -1 && val; types++)
