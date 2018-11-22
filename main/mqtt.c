@@ -1,7 +1,7 @@
 #include "mqtt.h"
 #include <esp_err.h>
 #include <esp_log.h>
-#include <esp_mqtt.h>
+#include <mqtt_client.h>
 #include <string.h>
 
 /* Constants */
@@ -26,6 +26,7 @@ typedef struct mqtt_publications_t {
 } mqtt_publications_t;
 
 /* Internal state */
+static esp_mqtt_client_handle_t mqtt_handle = NULL;
 static mqtt_subscription_t *subscription_list = NULL;
 static mqtt_publications_t *publications_list = NULL;
 static uint8_t is_connected = 0;
@@ -157,20 +158,11 @@ static void mqtt_publications_publish(mqtt_publications_t *list)
 int mqtt_subscribe(const char *topic, int qos, mqtt_on_message_received_cb_t cb,
     void *ctx, mqtt_free_ctx_cb_t free_cb)
 {
-    uint8_t retries = 0;
-
     if (!is_connected)
         return -1;
 
     ESP_LOGD(TAG, "Subscribing to %s", topic);
-    while ((esp_mqtt_subscribe(topic, qos) != true) && retries < 3)
-    {
-        ESP_LOGI(TAG, "Failed subscribing to %s (retries: %u), trying again...",
-            topic, retries);
-        retries++;
-    }
-
-    if (retries == 3)
+    if (esp_mqtt_client_subscribe(mqtt_handle, topic, qos) < 0)
     {
         ESP_LOGE(TAG, "Failed subscribing to %s", topic);
         return -1;
@@ -188,14 +180,17 @@ int mqtt_unsubscribe(const char *topic)
     if (!is_connected)
         return 0;
 
-    return esp_mqtt_unsubscribe(topic);
+    return esp_mqtt_client_unsubscribe(mqtt_handle, topic);
 }
 
 int mqtt_publish(const char *topic, uint8_t *payload, size_t len, int qos,
     uint8_t retained)
 {
     if (is_connected)
-        return esp_mqtt_publish(topic, payload, len, qos, retained) != true;
+    {
+        return esp_mqtt_client_publish(mqtt_handle, (char *)topic,
+            (char *)payload, len, qos, retained) < 0;
+    }
 
     /* If we're currently not connected, queue publication */
     ESP_LOGD(TAG, "MQTT is disconnected, adding publication to queue...");
@@ -205,10 +200,31 @@ int mqtt_publish(const char *topic, uint8_t *payload, size_t len, int qos,
     return 0;
 }
 
-static void mqtt_status_cb(esp_mqtt_status_t status)
+static void mqtt_message_cb(const char *topic, size_t topic_len,
+    uint8_t *payload, size_t len)
 {
-    switch (status) {
-    case ESP_MQTT_STATUS_CONNECTED:
+    mqtt_subscription_t *cur;
+
+    ESP_LOGD(TAG, "Received: %.*s => %.*s (%d)\n", topic_len, topic, len,
+        payload, (int)len);
+
+    for (cur = subscription_list; cur; cur = cur->next)
+    {
+        /* TODO: Correctly match MQTT topics (i.e. support wildcards) */
+        if (strncmp(cur->topic, topic, topic_len) ||
+            cur->topic[topic_len] != '\0')
+        {
+            continue;
+        }
+
+        cur->cb(cur->topic, payload, len, cur->ctx);
+    }
+}
+
+static esp_err_t mqtt_event_cb(esp_mqtt_event_handle_t event)
+{
+    switch (event->event_id) {
+    case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT client connected");
         is_connected = 1;
         mqtt_publications_publish(publications_list);
@@ -216,37 +232,43 @@ static void mqtt_status_cb(esp_mqtt_status_t status)
         if (on_connected_cb)
             on_connected_cb();
         break;
-    case ESP_MQTT_STATUS_DISCONNECTED:
+    case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "MQTT client disconnected");
         is_connected = 0;
         mqtt_subscriptions_free(&subscription_list);
         if (on_disconnected_cb)
             on_disconnected_cb();
         break;
+    case MQTT_EVENT_DATA:
+        mqtt_message_cb(event->topic, event->topic_len, (uint8_t *)event->data,
+            event->data_len);
+        break;
+    default:
+        break;
     }
-}
 
-static void mqtt_message_cb(const char *topic, uint8_t *payload, size_t len)
-{
-    mqtt_subscription_t *cur;
-
-    ESP_LOGD(TAG, "Recevied: %s => %s (%d)\n", topic, payload, (int)len);
-
-    for (cur = subscription_list; cur; cur = cur->next)
-    {
-        /* TODO: Correctly match MQTT topics (i.e. support wildcards) */
-        if (strcmp(cur->topic, topic))
-            continue;
-
-        cur->cb(topic, payload, len, cur->ctx);
-    }
+    return ESP_OK;
 }
 
 int mqtt_connect(const char *host, uint16_t port, const char *client_id,
     const char *username, const char *password)
 {
+    esp_mqtt_client_config_t config = {
+        .event_handle = mqtt_event_cb,
+        .host = host,
+        .port = port,
+        .client_id = client_id,
+        .username = username,
+        .password = password,
+        .disable_auto_reconnect = true,
+    };
+
     ESP_LOGI(TAG, "Connecting MQTT client");
-    esp_mqtt_start(host, port, client_id, username, password);
+    if (mqtt_handle)
+        esp_mqtt_client_destroy(mqtt_handle);
+    if (!(mqtt_handle = esp_mqtt_client_init(&config)))
+        return -1;
+    esp_mqtt_client_start(mqtt_handle);
     return 0;
 }
 
@@ -254,13 +276,15 @@ int mqtt_disconnect(void)
 {
     ESP_LOGI(TAG, "Disconnecting MQTT client");
     is_connected = 0;
-    esp_mqtt_stop();
+    if (mqtt_handle)
+        esp_mqtt_client_destroy(mqtt_handle);
+    mqtt_handle = NULL;
+
     return 0;
 }
 
 int mqtt_initialize(void)
 {
     ESP_LOGD(TAG, "Initializing MQTT client");
-    esp_mqtt_init(mqtt_status_cb, mqtt_message_cb, 256, 2000);
     return 0;
 }
