@@ -38,6 +38,9 @@ additional topics to help book-keeping:
   topic is monitored by the BLE2MQTT instance currently connected to the
   peripheral so that if another instance publishes `false`, the current instance
   will re-publish `true`
+* `<Peripheral MAC address>/Owner` - The name of the BLE2MQTT instance currently
+  connected to the peripheral, e.g. `BLE2MQTT-XXXX`, where `XXXX` are the last 2
+  octets of the ESP32's WiFi MAC address
 
 ## Compiling
 

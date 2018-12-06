@@ -169,11 +169,16 @@ static void ble_publish_connected(mac_addr_t mac, uint8_t is_connected)
         is_connected ? 4 : 5, config_mqtt_qos_get(),
         config_mqtt_retained_get());
 
-    /* Subscribe for other devices claiming this device is disconnected */
     if (is_connected)
     {
+        /* Subscribe for other devices claiming this device is disconnected */
         mqtt_subscribe(topic, config_mqtt_qos_get(), ble_on_mqtt_connected_cb,
             strdup(mactoa(mac)), free);
+        /* We are now the owner of this device */
+        snprintf(topic, MAX_TOPIC_LEN, "%s%s/Owner", config_mqtt_prefix_get(),
+            mactoa(mac));
+        mqtt_publish(topic, (uint8_t *)device_name_get(), 14,
+            config_mqtt_qos_get(), config_mqtt_retained_get());
     }
 }
 
