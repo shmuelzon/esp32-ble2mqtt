@@ -31,6 +31,14 @@ using the above format suffixed with `/Set`. Payload should be of the same
 format described above and will be converted, when needed, before sending to the
 BLE peripheral.
 
+In addition to the characteristic values, the BLE2MQTT devices also publish
+additional topics to help book-keeping:
+* `<Peripheral MAC address>/Connected` - With a payload of `true`/`false`
+  depicting if the peripheral is currently connected or not. Note that this
+  topic is monitored by the BLE2MQTT instance currently connected to the
+  peripheral so that if another instance publishes `false`, the current instance
+  will re-publish `true`
+
 ## Compiling
 
 Download the repository and its dependencies:
