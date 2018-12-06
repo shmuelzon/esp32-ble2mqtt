@@ -131,6 +131,9 @@ int ble_scan_start(void)
 int ble_scan_stop(void)
 {
     ESP_LOGD(TAG, "Stopping BLE scan");
+    if (!scan_requested)
+        return 0;
+
     scan_requested = 0;
     return esp_ble_gap_stop_scanning();
 }
