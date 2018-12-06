@@ -89,11 +89,10 @@ static void mqtt_subscription_remove(mqtt_subscription_t **list,
     const char *topic)
 {
     mqtt_subscription_t **cur, *tmp;
-    size_t len = strlen(topic);
 
     for (cur = list; *cur; cur = &(*cur)->next)
     {
-        if (!strncmp((*cur)->topic, topic, len))
+        if (!strcmp((*cur)->topic, topic))
             break;
     }
 

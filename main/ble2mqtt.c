@@ -145,7 +145,7 @@ static void ble_on_mqtt_connected_cb(const char *topic, const uint8_t *payload,
 {
     char new_topic[MAX_TOPIC_LEN];
 
-    if (!strncmp((char *)payload, "true", len))
+    if (len == 4 && !strncmp((char *)payload, "true", len))
         return;
 
     /* Someone published our device is disconnected, set them straight */
