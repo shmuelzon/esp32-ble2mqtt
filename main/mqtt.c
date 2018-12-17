@@ -259,7 +259,6 @@ int mqtt_connect(const char *host, uint16_t port, const char *client_id,
         .client_id = client_id,
         .username = username,
         .password = password,
-        .disable_auto_reconnect = true,
     };
 
     ESP_LOGI(TAG, "Connecting MQTT client");
