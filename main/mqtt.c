@@ -274,6 +274,7 @@ int mqtt_disconnect(void)
 {
     ESP_LOGI(TAG, "Disconnecting MQTT client");
     is_connected = 0;
+    mqtt_subscriptions_free(&subscription_list);
     if (mqtt_handle)
         esp_mqtt_client_destroy(mqtt_handle);
     mqtt_handle = NULL;
