@@ -116,7 +116,7 @@ static void wifi_on_connected(void)
 
 static void wifi_on_disconnected(void)
 {
-    ESP_LOGI(TAG, "Disonnected from WiFi, stopping MQTT");
+    ESP_LOGI(TAG, "Disconnected from WiFi, stopping MQTT");
     mqtt_disconnect();
     /* We don't get notified when manually stopping MQTT */
     cleanup();
