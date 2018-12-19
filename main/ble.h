@@ -1,6 +1,7 @@
 #ifndef BLE_H
 #define BLE_H
 
+#include "beacons.h"
 #include "ble_utils.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -16,6 +17,8 @@
 #define CHAR_PROP_EXT_PROP  (1 << 7)
 
 /* Event callback types */
+typedef void (*ble_on_beacon_discovered_cb_t)(mac_addr_t mac, uint8_t *adv_data,
+    size_t adv_data_len, int rssi, beacon_ops_t *ops);
 typedef void (*ble_on_device_discovered_cb_t)(mac_addr_t mac);
 typedef void (*ble_on_device_connected_cb_t)(mac_addr_t mac);
 typedef void (*ble_on_device_disconnected_cb_t)(mac_addr_t mac);
@@ -29,6 +32,7 @@ typedef void (*ble_on_device_characteristic_value_cb_t)(mac_addr_t mac,
 typedef uint32_t (*ble_on_passkey_requested_cb_t)(mac_addr_t mac);
 
 /* Event handlers */
+void ble_set_on_beacon_discovered_cb(ble_on_beacon_discovered_cb_t cb);
 void ble_set_on_device_discovered_cb(ble_on_device_discovered_cb_t cb);
 void ble_set_on_device_connected_cb(ble_on_device_connected_cb_t cb);
 void ble_set_on_device_disconnected_cb(ble_on_device_disconnected_cb_t cb);
