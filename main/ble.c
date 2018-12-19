@@ -107,6 +107,115 @@ void ble_set_on_passkey_requested_cb(ble_on_passkey_requested_cb_t cb)
     on_passkey_requested_cb = cb;
 }
 
+/* BLE Queue */
+static void ble_operation_remove_by_mac(ble_operation_t **queue,
+    mac_addr_t mac)
+{
+    ble_operation_t *tmp, **cur = queue;
+
+    while (*cur)
+    {
+        if (!memcmp((*cur)->device->mac, mac, sizeof(mac_addr_t)))
+        {
+            tmp = *cur;
+            *cur = (*cur)->next;
+            if (tmp->len)
+                free(tmp->value);
+            free(tmp);
+        }
+        else
+            cur = &(*cur)->next;
+    }
+}
+
+static inline void ble_operation_perform(ble_operation_t *operation)
+{
+    switch (operation->type)
+    {
+    case BLE_OPERATION_TYPE_READ:
+        esp_ble_gattc_read_char(g_gattc_if, operation->device->conn_id,
+            operation->characteristic->handle, ESP_GATT_AUTH_REQ_NONE);
+        break;
+    case BLE_OPERATION_TYPE_WRITE:
+        esp_ble_gattc_write_char(g_gattc_if, operation->device->conn_id,
+            operation->characteristic->handle, operation->len, operation->value,
+            ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
+        break;
+    case BLE_OPERATION_TYPE_WRITE_CHAR:
+        esp_ble_gattc_write_char_descr(g_gattc_if, operation->device->conn_id,
+            operation->characteristic->client_config_handle, operation->len,
+            operation->value,
+            ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
+        break;
+    }
+
+    if (operation->len)
+        free(operation->value);
+    free(operation);
+}
+
+static void ble_operation_dequeue(ble_operation_t **queue)
+{
+    ble_operation_t *operation = *queue;
+
+    /* Queue is empty, nothing to do */
+    if (!operation)
+        return;
+
+    *queue = operation->next;
+    ESP_LOGD(TAG, "Dequeue: type: %d, device: %s, char: %s, len: %u, val: %p",
+        operation->type, mactoa(operation->device->mac),
+        uuidtoa(operation->characteristic->uuid), operation->len,
+        operation->value);
+    ble_operation_perform(operation);
+}
+
+static void ble_queue_timer_cb(TimerHandle_t xTimer)
+{
+    ESP_LOGD(TAG, "Queue timer expired");
+    ble_operation_dequeue(&operation_queue);
+}
+
+static void ble_operation_enqueue(ble_operation_t **queue,
+    ble_operation_type_t type, ble_device_t *device,
+    ble_characteristic_t *characteristic, size_t len, const uint8_t *value)
+{
+    static TimerHandle_t timer = NULL;
+    ble_operation_t **iter, *operation = malloc(sizeof(*operation));
+
+    operation->next = NULL;
+    operation->type = type;
+    operation->device = device;
+    operation->characteristic = characteristic;
+    operation->len = len;
+    if (len)
+    {
+        operation->value = malloc(len);
+        memcpy(operation->value, value, len);
+    }
+    else
+        operation->value = NULL;
+
+    ESP_LOGD(TAG, "Enqueue: type: %d, device: %s, char: %s, len: %u, val: %p",
+        operation->type, mactoa(operation->device->mac),
+        uuidtoa(operation->characteristic->uuid), operation->len,
+        operation->value);
+
+    for (iter = queue; *iter; iter = &(*iter)->next);
+    *iter = operation;
+
+    /* Create timer */
+    if (timer == NULL)
+    {
+        timer = xTimerCreate("ble_queue", pdMS_TO_TICKS(500), pdFALSE, NULL,
+            ble_queue_timer_cb);
+    }
+
+    /* First item in queue or timer is already running, reset timer */
+    if (!(*queue)->next || xTimerIsTimerActive(timer))
+        xTimerReset(timer, 0);
+}
+
 void ble_clear_bonding_info(void)
 {
     int i, dev_num = esp_ble_get_bond_device_num();
@@ -159,6 +268,8 @@ int ble_connect(mac_addr_t mac)
 
 static int _ble_disconnect(ble_device_t *dev)
 {
+    /* Remove queued requests for this device */
+    ble_operation_remove_by_mac(&operation_queue, dev->mac);
     return esp_ble_gattc_close(g_gattc_if, dev->conn_id);
 }
 
@@ -279,94 +390,6 @@ int ble_foreach_characteristic(mac_addr_t mac,
     }
 
     return 0;
-}
-
-static inline void ble_operation_perform(ble_operation_t *operation)
-{
-    switch (operation->type)
-    {
-    case BLE_OPERATION_TYPE_READ:
-        esp_ble_gattc_read_char(g_gattc_if, operation->device->conn_id,
-            operation->characteristic->handle, ESP_GATT_AUTH_REQ_NONE);
-        break;
-    case BLE_OPERATION_TYPE_WRITE:
-        esp_ble_gattc_write_char(g_gattc_if, operation->device->conn_id,
-            operation->characteristic->handle, operation->len, operation->value,
-            ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
-        break;
-    case BLE_OPERATION_TYPE_WRITE_CHAR:
-        esp_ble_gattc_write_char_descr(g_gattc_if, operation->device->conn_id,
-            operation->characteristic->client_config_handle, operation->len,
-            operation->value,
-            ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
-        break;
-    }
-
-    if (operation->len)
-        free(operation->value);
-    free(operation);
-}
-
-static void ble_operation_dequeue(ble_operation_t **queue)
-{
-    ble_operation_t *operation = *queue;
-
-    /* Queue is empty, nothing to do */
-    if (!operation)
-        return;
-
-    *queue = operation->next;
-    ESP_LOGD(TAG, "Dequeue: type: %d, device: %s, char: %s, len: %u, val: %p",
-        operation->type, mactoa(operation->device->mac),
-        uuidtoa(operation->characteristic->uuid), operation->len,
-        operation->value);
-    ble_operation_perform(operation);
-}
-
-static void ble_queue_timer_cb(TimerHandle_t xTimer)
-{
-    ESP_LOGD(TAG, "Queue timer expired");
-    ble_operation_dequeue(&operation_queue);
-}
-
-static void ble_operation_enqueue(ble_operation_t **queue,
-    ble_operation_type_t type, ble_device_t *device,
-    ble_characteristic_t *characteristic, size_t len, const uint8_t *value)
-{
-    static TimerHandle_t timer = NULL;
-    ble_operation_t **iter, *operation = malloc(sizeof(*operation));
-
-    operation->next = NULL;
-    operation->type = type;
-    operation->device = device;
-    operation->characteristic = characteristic;
-    operation->len = len;
-    if (len)
-    {
-        operation->value = malloc(len);
-        memcpy(operation->value, value, len);
-    }
-    else
-        operation->value = NULL;
-
-    ESP_LOGD(TAG, "Enqueue: type: %d, device: %s, char: %s, len: %u, val: %p",
-        operation->type, mactoa(operation->device->mac),
-        uuidtoa(operation->characteristic->uuid), operation->len,
-        operation->value);
-
-    for (iter = queue; *iter; iter = &(*iter)->next);
-    *iter = operation;
-
-    /* Create timer */
-    if (timer == NULL)
-    {
-        timer = xTimerCreate("ble_queue", pdMS_TO_TICKS(500), pdFALSE, NULL,
-            ble_queue_timer_cb);
-    }
-
-    /* First item in queue or timer is already running, reset timer */
-    if (!(*queue)->next || xTimerIsTimerActive(timer))
-        xTimerReset(timer, 0);
 }
 
 int ble_characteristic_read(mac_addr_t mac, ble_uuid_t service_uuid,
@@ -622,6 +645,9 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
         /* Notify app that the device is disconnected */
         if (on_device_disconnected_cb)
             on_device_disconnected_cb(param->close.remote_bda);
+
+        /* Remove queued requests for this device */
+        ble_operation_remove_by_mac(&operation_queue, param->close.remote_bda);
 
         /* Remove device from cache */
         ble_device_remove_by_mac(&devices_list, param->close.remote_bda);
