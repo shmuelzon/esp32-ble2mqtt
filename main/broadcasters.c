@@ -1,4 +1,4 @@
-#include "beacons.h"
+#include "broadcasters.h"
 #include "ble_utils.h"
 #include <esp_log.h>
 #include <esp_gap_ble_api.h>
@@ -8,7 +8,7 @@
 #include <endian.h>
 
 /* Constants */
-static const char *TAG = "Beacon";
+static const char *TAG = "Broadcaster";
 
 /* Utilities */
 static char *hex2a(char *s, uint8_t *buf, size_t len)
@@ -61,7 +61,7 @@ static ibeacon_t *ibeacon_data_get(uint8_t *adv_data, uint8_t adv_data_len,
     return (ibeacon_t *)data;
 }
 
-static int ibeacon_is_beacon(uint8_t *adv_data, size_t adv_data_len)
+static int ibeacon_is_broadcaster(uint8_t *adv_data, size_t adv_data_len)
 {
     uint8_t len;
     ibeacon_t *beacon = ibeacon_data_get(adv_data, adv_data_len, &len);
@@ -76,7 +76,7 @@ static int ibeacon_is_beacon(uint8_t *adv_data, size_t adv_data_len)
 }
 
 static void ibeacon_metadata_get(uint8_t *adv_data, size_t adv_data_len,
-    int rssi, beacon_meta_data_cb_t cb, void *ctx)
+    int rssi, broadcaster_meta_data_cb_t cb, void *ctx)
 {
     char s[5];
     ibeacon_t *beacon = ibeacon_data_get(adv_data, adv_data_len, NULL);
@@ -90,9 +90,9 @@ static void ibeacon_metadata_get(uint8_t *adv_data, size_t adv_data_len,
     cb("Distance", s, ctx);
 }
 
-static beacon_ops_t ibeacon_ops = {
+static broadcaster_ops_t ibeacon_ops = {
     .name = "iBeacon",
-    .is_beacon = ibeacon_is_beacon,
+    .is_broadcaster = ibeacon_is_broadcaster,
     .metadata_get = ibeacon_metadata_get,
 };
 
@@ -146,7 +146,7 @@ static eddystone_t *eddystone_data_get(uint8_t *adv_data, uint8_t adv_data_len,
     return (eddystone_t *)data;
 }
 
-static int eddystone_is_beacon(uint8_t *adv_data, size_t adv_data_len)
+static int eddystone_is_broadcaster(uint8_t *adv_data, size_t adv_data_len)
 {
     uint8_t len;
     uint8_t *data = esp_ble_resolve_adv_data(adv_data,
@@ -232,7 +232,7 @@ static char *eddystone_url_get(char url)
 }
 
 static void eddystone_metadata_get(uint8_t *adv_data, size_t adv_data_len,
-    int rssi, beacon_meta_data_cb_t cb, void *ctx)
+    int rssi, broadcaster_meta_data_cb_t cb, void *ctx)
 {
     char s[30];
     uint8_t len;
@@ -286,26 +286,26 @@ static void eddystone_metadata_get(uint8_t *adv_data, size_t adv_data_len,
     }
 }
 
-static beacon_ops_t eddystone_ops = {
+static broadcaster_ops_t eddystone_ops = {
     .name = "Eddystone",
-    .is_beacon = eddystone_is_beacon,
+    .is_broadcaster = eddystone_is_broadcaster,
     .metadata_get = eddystone_metadata_get,
 };
 
 /* Common */
-static beacon_ops_t *beacon_ops[] = {
+static broadcaster_ops_t *broadcaster_ops[] = {
     &ibeacon_ops,
     &eddystone_ops,
     NULL
 };
 
-beacon_ops_t *beacon_ops_get(uint8_t *adv_data, size_t adv_data_len)
+broadcaster_ops_t *broadcaster_ops_get(uint8_t *adv_data, size_t adv_data_len)
 {
-    beacon_ops_t **ops;
+    broadcaster_ops_t **ops;
 
-    for (ops = beacon_ops; *ops; ops++)
+    for (ops = broadcaster_ops; *ops; ops++)
     {
-        if ((*ops)->is_beacon(adv_data, adv_data_len))
+        if ((*ops)->is_broadcaster(adv_data, adv_data_len))
             return (*ops);
     }
 

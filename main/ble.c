@@ -1,5 +1,5 @@
 #include "ble.h"
-#include "beacons.h"
+#include "broadcasters.h"
 #include <esp_bt.h>
 #include <esp_bt_main.h>
 #include <esp_gap_ble_api.h>
@@ -60,7 +60,7 @@ static ble_device_t *devices_list = NULL;
 static ble_operation_t *operation_queue = NULL;
 
 /* Callback functions */
-static ble_on_beacon_discovered_cb_t on_beacon_discovered_cb = NULL;
+static ble_on_broadcaster_discovered_cb_t on_broadcaster_discovered_cb = NULL;
 static ble_on_device_discovered_cb_t on_device_discovered_cb = NULL;
 static ble_on_device_connected_cb_t on_device_connected_cb = NULL;
 static ble_on_device_disconnected_cb_t on_device_disconnected_cb = NULL;
@@ -70,9 +70,9 @@ static ble_on_device_characteristic_value_cb_t
     on_device_characteristic_value_cb = NULL;
 static ble_on_passkey_requested_cb_t on_passkey_requested_cb = NULL;
 
-void ble_set_on_beacon_discovered_cb(ble_on_beacon_discovered_cb_t cb)
+void ble_set_on_broadcaster_discovered_cb(ble_on_broadcaster_discovered_cb_t cb)
 {
-    on_beacon_discovered_cb = cb;
+    on_broadcaster_discovered_cb = cb;
 }
 
 void ble_set_on_device_discovered_cb(ble_on_device_discovered_cb_t cb)
@@ -549,14 +549,14 @@ static void gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
         if (param->scan_rst.search_evt != ESP_GAP_SEARCH_INQ_RES_EVT)
             break;
             
-        /* Check if this device is a beacon */
-        beacon_ops_t *beacon_ops = beacon_ops_get(param->scan_rst.ble_adv,
-            param->scan_rst.adv_data_len);
-        if (beacon_ops && on_beacon_discovered_cb)
+        /* Check if this device is a broadcaster */
+        broadcaster_ops_t *broadcaster_ops = broadcaster_ops_get(
+            param->scan_rst.ble_adv, param->scan_rst.adv_data_len);
+        if (broadcaster_ops && on_broadcaster_discovered_cb)
         {
-            on_beacon_discovered_cb(param->scan_rst.bda,
+            on_broadcaster_discovered_cb(param->scan_rst.bda,
                 param->scan_rst.ble_adv, param->scan_rst.adv_data_len,
-                param->scan_rst.rssi, beacon_ops);
+                param->scan_rst.rssi, broadcaster_ops);
         }
 
         device = ble_device_find_by_mac(devices_list, param->scan_rst.bda);

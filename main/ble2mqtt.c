@@ -1,5 +1,5 @@
 #include "config.h"
-#include "beacons.h"
+#include "broadcasters.h"
 #include "ble.h"
 #include "ble_utils.h"
 #include "mqtt.h"
@@ -193,26 +193,26 @@ static mqtt_ctx_t *ble_ctx_gen(mac_addr_t mac, ble_uuid_t service,
 }
 
 /* BLE callback functions */
-static void ble_on_beacon_metadata(char *name, char *val, void *ctx)
+static void ble_on_broadcaster_metadata(char *name, char *val, void *ctx)
 {
     char topic[MAX_TOPIC_LEN];
 
     sprintf(topic, "%s/%s/%s", device_name_get(), (char *)ctx, name);
-    /* Beacon topics shouldn't be retained */
+    /* Broadcaster topics shouldn't be retained */
     mqtt_publish(topic, (uint8_t *)val, strlen(val), config_mqtt_qos_get(), 0);
 }
 
-static void ble_on_beacon_discovered(mac_addr_t mac, uint8_t *adv_data,
-    size_t adv_data_len, int rssi, beacon_ops_t *ops)
+static void ble_on_broadcaster_discovered(mac_addr_t mac, uint8_t *adv_data,
+    size_t adv_data_len, int rssi, broadcaster_ops_t *ops)
 {
     char *mac_str = strdup(mactoa(mac));
     char rssi_str[6];
-    ESP_LOGI(TAG, "Discovered %s beacon", ops->name);
+    ESP_LOGI(TAG, "Discovered %s broadcaster", ops->name);
 
-    ble_on_beacon_metadata("Type", ops->name, mac_str);
+    ble_on_broadcaster_metadata("Type", ops->name, mac_str);
     sprintf(rssi_str, "%d", rssi);
-    ble_on_beacon_metadata("RSSI", rssi_str, mac_str);
-    ops->metadata_get(adv_data, adv_data_len, rssi, ble_on_beacon_metadata,
+    ble_on_broadcaster_metadata("RSSI", rssi_str, mac_str);
+    ops->metadata_get(adv_data, adv_data_len, rssi, ble_on_broadcaster_metadata,
         mactoa(mac));
 
     free(mac_str);
@@ -414,7 +414,7 @@ void app_main()
 
     /* Init BLE */
     ESP_ERROR_CHECK(ble_initialize());
-    ble_set_on_beacon_discovered_cb(ble_on_beacon_discovered);
+    ble_set_on_broadcaster_discovered_cb(ble_on_broadcaster_discovered);
     ble_set_on_device_discovered_cb(ble_on_device_discovered);
     ble_set_on_device_connected_cb(ble_on_device_connected);
     ble_set_on_device_disconnected_cb(ble_on_device_disconnected);

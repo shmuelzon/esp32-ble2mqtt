@@ -42,24 +42,26 @@ additional topics to help book-keeping:
   connected to the peripheral, e.g. `BLE2MQTT-XXXX`, where `XXXX` are the last 2
   octets of the ESP32's WiFi MAC address
 
-## Beacons
+## Broadcasters
 
-This application supports publishing BLE beacon advertisements over MQTT.
-For each beacon, at-least two topics are published:
-* `BLE2MQTT-XXXX/<Beacon MAC address>/Type` - The beacon type, e.g. `iBeacon`
-* `BLE2MQTT-XXXX/<Beacon MAC address>/RSSI` - The RSSI value of the received
-  advertisement
+Broadcasters are non-connectable BLE devices that only send advertisements.
+This application supports publishing these advertisements over MQTT.
+For each broadcaster, at-least two topics are published:
+* `BLE2MQTT-XXXX/<Broadcaster MAC address>/Type` - The broadcaster type, e.g.
+  `iBeacon`
+* `BLE2MQTT-XXXX/<Broadcaster MAC address>/RSSI` - The RSSI value of the
+  received advertisement
 
-In addition, depending on the beacon type and payload, additional meta-data is
-published.
+In addition, depending on the broadcaster type and payload, additional meta-data
+is published.
 * For iBeacon: `UUID`, `Major`, `Minor` and `Distance`
 * For Eddystone:
   * `UID` frames: `Namespace`, `Instance` and `Distance`
   * `URL` frames: `URL` and `Distance`
   * `TLM` frames: `Voltage`, `Temperature`, `Count` and `Uptime`
 
-**Note:** Beacon topics are published without the retained flag regardless of
-what's defined in the configuration file.
+**Note:** Broadcaster topics are published without the retained flag regardless
+of what's defined in the configuration file.
 
 ## Compiling
 
