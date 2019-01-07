@@ -15,6 +15,7 @@ uint8_t config_ble_characteristic_should_include(const char *uuid);
 uint8_t config_ble_service_should_include(const char *uuid);
 uint8_t config_ble_should_connect(const char *mac);
 uint32_t config_ble_passkey_get(const char *mac);
+uint32_t config_ble_publish_advertisement_interval(void);
 
 /* MQTT Configuration*/
 const char *config_mqtt_host_get(void);

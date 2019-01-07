@@ -29,6 +29,7 @@ typedef struct ble_device_t {
     uint16_t conn_id;
     ble_service_t *services;
     uint8_t is_authenticating;
+    time_t last_processed_adv_time;
 } ble_device_t;
 
 /* Callback functions */
@@ -43,6 +44,7 @@ char *mactoa(mac_addr_t mac);
 int atomac(const char *str, mac_addr_t mac);
 char *uuidtoa(ble_uuid_t uuid);
 int atouuid(const char *str, ble_uuid_t uuid);
+char *chartohex(const uint8_t *data, size_t len);
 char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len);
 uint8_t *atochar(ble_uuid_t uuid, const char *data, size_t len,
     size_t *ret_len);

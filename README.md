@@ -42,6 +42,27 @@ additional topics to help book-keeping:
   connected to the peripheral, e.g. `BLE2MQTT-XXXX`, where `XXXX` are the last 2
   octets of the ESP32's WiFi MAC address
 
+## Advertisement
+
+This application supports publishing all BLE advertisements over MQTT,
+When the advertisement section is set inside ble section.
+The push interval is the seconds between mqtt publications of advertisement messages.
+
+* 0 means every message can be send
+* -1 no message at all can be send
+* other values the seconds between advertisements pusblished to mqtt.
+
+```json
+{
+  "ble": {
+    "advertisement" : {
+      "publishinterval": 5
+    }
+}
+```
+
+The message itself the hexadecimal string value of message.
+
 ## Beacons
 
 This application supports publishing BLE beacon advertisements over MQTT.

@@ -146,6 +146,18 @@ uint32_t config_ble_passkey_get(const char *mac)
     return 0;
 }
 
+uint32_t config_ble_publish_advertisement_interval(void)
+{
+    cJSON *ble = cJSON_GetObjectItemCaseSensitive(config, "ble");
+    cJSON *advertisement = cJSON_GetObjectItemCaseSensitive(ble, "advertisement");
+    cJSON *interval = cJSON_GetObjectItemCaseSensitive(advertisement, "publishinterval");
+
+    if (cJSON_IsNumber(interval))
+        return interval->valuedouble;
+
+    return -1;
+}
+
 /* MQTT Configuration*/
 const char *config_mqtt_server_get(const char *param_name)
 {

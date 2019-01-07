@@ -230,6 +230,22 @@ static characteristic_type_t *ble_get_characteristic_types(ble_uuid_t uuid)
     return ret;
 }
 
+
+char *chartohex(const uint8_t *data, size_t len)
+{
+	static char buf[1024];
+	char *p = buf;
+	int i = 0;
+
+	for (; i < len; i++) {
+		p += sprintf(p, "%02hhX", data[i]);
+	}
+
+	*(p) = '\0';
+    return buf;
+
+}
+
 char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
 {
     characteristic_type_t *types = ble_get_characteristic_types(uuid);
@@ -416,6 +432,7 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
     *(p - 1) = '\0';
     return buf;
 }
+
 
 uint8_t *atochar(ble_uuid_t uuid, const char *data, size_t len, size_t *ret_len)
 {

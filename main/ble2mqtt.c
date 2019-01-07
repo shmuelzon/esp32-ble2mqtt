@@ -11,6 +11,7 @@
 #include <nvs.h>
 #include <nvs_flash.h>
 #include <string.h>
+#include <time.h>
 
 #define MAX_TOPIC_LEN 256
 static const char *TAG = "BLE2MQTT";
@@ -262,6 +263,19 @@ static char *ble_topic(mac_addr_t mac, ble_uuid_t service_uuid,
     return topic;
 }
 
+static char *ble_advertisement_topic(mac_addr_t mac, const char *subtopic)
+{
+    static char topic[MAX_TOPIC_LEN];
+    int i;
+
+    i = snprintf(topic, MAX_TOPIC_LEN, "%s%s", config_mqtt_prefix_get(),
+        mactoa(mac));
+
+    snprintf(topic + i, MAX_TOPIC_LEN - i, "/%s", subtopic);
+
+    return topic;
+}
+
 static void ble_on_characteristic_removed(mac_addr_t mac, ble_uuid_t service_uuid,
     ble_uuid_t characteristic_uuid, uint8_t properties)
 {
@@ -383,6 +397,51 @@ static uint32_t ble_on_passkey_requested(mac_addr_t mac)
     return passkey;
 }
 
+static void ble_on_device_advertisement(mac_addr_t mac, uint8_t *payload,
+	    size_t payload_len, int rssi)
+{
+	if (config_ble_publish_advertisement_interval() == -1)
+	{
+		return;
+	}
+
+    char *mac_str = strdup(mactoa(mac));
+	int adv_proc_req = ble_advertisement_process_required(mac, config_ble_publish_advertisement_interval());
+
+	if (adv_proc_req == 0)
+	{
+		ESP_LOGD(TAG, "No advertisement processing required: %s", mac_str);
+	}
+	else if (adv_proc_req == 1)
+	{
+        ESP_LOGI(TAG, "Processing advertisement: %s", mac_str);
+        char *topic;
+        topic = ble_advertisement_topic(mac, "Advertisement");
+
+        char *hex = chartohex(payload, payload_len);
+        size_t hex_len = strlen(hex);
+        char rssi_str[6];
+        sprintf(rssi_str, "%d", rssi);
+
+        ESP_LOGI(TAG, "Publishing: %s = %s RSSI: %s", topic, hex, rssi_str);
+
+        mqtt_publish(topic, (uint8_t *)hex, hex_len, config_mqtt_qos_get(),
+            config_mqtt_retained_get());
+
+        topic = ble_advertisement_topic(mac, "RSSI");
+
+        mqtt_publish(topic, (uint8_t *)rssi_str, strlen(rssi_str), config_mqtt_qos_get(),
+            config_mqtt_retained_get());
+
+	}
+	else if (adv_proc_req == -1)
+	{
+        ESP_LOGE(TAG, "Failed to check advertisement interval: %s", mac_str);
+	}
+    free(mac_str);
+}
+
+
 void app_main()
 {
     /* Initialize NVS */
@@ -422,6 +481,7 @@ void app_main()
     ble_set_on_device_characteristic_value_cb(
         ble_on_device_characteristic_value);
     ble_set_on_passkey_requested_cb(ble_on_passkey_requested);
+    ble_set_on_device_advertisement_cb(ble_on_device_advertisement);
 
     /* Start by connecting to WiFi */
     wifi_hostname_set(device_name_get());

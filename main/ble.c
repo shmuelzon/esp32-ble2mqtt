@@ -11,6 +11,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/timers.h>
 #include <string.h>
+#include <time.h>
 
 /* Constants */
 #define INVALID_HANDLE 0
@@ -69,6 +70,8 @@ static ble_on_device_services_discovered_cb_t
 static ble_on_device_characteristic_value_cb_t
     on_device_characteristic_value_cb = NULL;
 static ble_on_passkey_requested_cb_t on_passkey_requested_cb = NULL;
+static ble_set_on_device_advertisement_cb_t on_device_advertisement_cb = NULL;
+
 
 void ble_set_on_beacon_discovered_cb(ble_on_beacon_discovered_cb_t cb)
 {
@@ -105,6 +108,11 @@ void ble_set_on_device_characteristic_value_cb(
 void ble_set_on_passkey_requested_cb(ble_on_passkey_requested_cb_t cb)
 {
     on_passkey_requested_cb = cb;
+}
+
+void ble_set_on_device_advertisement_cb(ble_set_on_device_advertisement_cb_t cb)
+{
+	on_device_advertisement_cb = cb;
 }
 
 /* BLE Queue */
@@ -298,6 +306,22 @@ int ble_services_scan(mac_addr_t mac)
 
     return esp_ble_gattc_search_service(g_gattc_if, dev->conn_id, NULL);
 }
+
+
+int ble_advertisement_process_required(mac_addr_t mac, int interval_sec)
+{
+    ble_device_t *dev = ble_device_find_by_mac(devices_list, mac);
+
+    if (!dev)
+        return -1;
+
+    if (dev->last_processed_adv_time + interval_sec < time(NULL)) {
+        time(&dev->last_processed_adv_time);
+        return 1;
+    }
+    return 0;
+}
+
 
 static void esp_uuid_to_bt_uuid(esp_bt_uuid_t esp, ble_uuid_t bt)
 {
@@ -548,7 +572,7 @@ static void gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 
         if (param->scan_rst.search_evt != ESP_GAP_SEARCH_INQ_RES_EVT)
             break;
-            
+
         /* Check if this device is a beacon */
         beacon_ops_t *beacon_ops = beacon_ops_get(param->scan_rst.ble_adv,
             param->scan_rst.adv_data_len);
@@ -561,17 +585,22 @@ static void gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 
         device = ble_device_find_by_mac(devices_list, param->scan_rst.bda);
 
-        /* Device already discovered, nothing to do*/
-        if (device)
-            break;
+        if (!device) {
+			/* Cache device information */
+			device = ble_device_add(&devices_list, param->scan_rst.bda,
+				param->scan_rst.ble_addr_type, -1);
 
-        /* Cache device information */
-        ble_device_add(&devices_list, param->scan_rst.bda,
-            param->scan_rst.ble_addr_type, -1);
+			/* Notify app only on newly connected devices */
+			if(on_device_discovered_cb)
+				on_device_discovered_cb(param->scan_rst.bda);
+    	}
 
-        /* Notify app only on newly connected devices */
-        if(on_device_discovered_cb)
-            on_device_discovered_cb(param->scan_rst.bda);
+		/* All advertisement delegated to callback. Device have to be added */
+		if (on_device_advertisement_cb) {
+			on_device_advertisement_cb(param->scan_rst.bda,
+				param->scan_rst.ble_adv, param->scan_rst.adv_data_len,
+				param->scan_rst.rssi);
+		}
 
         break;
     }
