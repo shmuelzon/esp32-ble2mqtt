@@ -156,7 +156,7 @@ static int eddystone_is_broadcaster(uint8_t *adv_data, size_t adv_data_len)
     if (!data || len != 2 ||
         le16toh(*(uint16_t *)data) != EDDYSTONE_SERVICE_UUID)
     {
-        return NULL;
+        return 0;
     }
 
     eddystone = eddystone_data_get(adv_data, adv_data_len, &len);
@@ -165,7 +165,7 @@ static int eddystone_is_broadcaster(uint8_t *adv_data, size_t adv_data_len)
     if (!eddystone || len < offsetof(eddystone_t, u) ||
         le16toh(eddystone->service_uuid) != EDDYSTONE_SERVICE_UUID)
     {
-        return NULL;
+        return 0;
     }
 
     /* Validate length */
