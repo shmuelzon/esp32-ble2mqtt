@@ -140,7 +140,7 @@ static eddystone_t *eddystone_data_get(uint8_t *adv_data, uint8_t adv_data_len,
     uint8_t *data = esp_ble_resolve_adv_data(adv_data,
         ESP_BLE_AD_TYPE_SERVICE_DATA, &len);
 
-    if (*eddystone_len)
+    if (eddystone_len)
         *eddystone_len = len;
 
     return (eddystone_t *)data;
