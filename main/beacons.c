@@ -8,7 +8,7 @@
 #include <endian.h>
 
 /* Constants */
-const char *TAG = "Beacon";
+static const char *TAG = "Beacon";
 
 /* Utilities */
 static char *hex2a(char *s, uint8_t *buf, size_t len)
