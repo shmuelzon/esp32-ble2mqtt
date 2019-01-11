@@ -213,7 +213,7 @@ static void ble_on_broadcaster_discovered(mac_addr_t mac, uint8_t *adv_data,
     sprintf(rssi_str, "%d", rssi);
     ble_on_broadcaster_metadata("RSSI", rssi_str, mac_str);
     ops->metadata_get(adv_data, adv_data_len, rssi, ble_on_broadcaster_metadata,
-        mactoa(mac));
+        mac_str);
 
     free(mac_str);
 }
