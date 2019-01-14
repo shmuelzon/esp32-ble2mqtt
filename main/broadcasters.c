@@ -38,6 +38,17 @@ static char *_uuidtoa(ble_uuid_t uuid)
     return s;
 }
 
+/* MAC addresses in little-endian (compared to mactoa()) */
+char *_mactoa(mac_addr_t mac)
+{
+    static char s[18];
+
+    sprintf(s, "%02x:%02x:%02x:%02x:%02x:%02x", mac[5], mac[3], mac[4], mac[2],
+        mac[1], mac[0]);
+
+    return s;
+}
+
 /* iBeacon */
 typedef struct {
     uint16_t company_id;
@@ -292,10 +303,98 @@ static broadcaster_ops_t eddystone_ops = {
     .metadata_get = eddystone_metadata_get,
 };
 
+/* Mijia Temperature and Humidity Sensor */
+#define MIJIA_TEMP_HUM_SERVICE_UUID 0xFE95
+#define MIJIA_TEMP_HUM_DATA_TYPE_TEMP 0x04
+#define MIJIA_TEMP_HUM_DATA_TYPE_HUM 0x06
+#define MIJIA_TEMP_HUM_DATA_TYPE_BATT 0x0A
+#define MIJIA_TEMP_HUM_DATA_TYPE_TEMP_HUM 0x0D
+
+typedef struct {
+    uint16_t service_uuid;
+    uint8_t tbd1[4];
+    uint8_t message_counter;
+    mac_addr_t mac;
+    uint8_t data_type;
+    uint8_t tbd2;
+    uint8_t data_len;
+    uint8_t data[0];
+} __attribute__((packed)) mijia_temp_hum_t;
+
+static mijia_temp_hum_t *mijia_temp_hum_data_get(uint8_t *adv_data,
+    uint8_t adv_data_len, uint8_t *mijia_temp_hum_len)
+{
+    uint8_t len;
+    uint8_t *data = esp_ble_resolve_adv_data(adv_data,
+        ESP_BLE_AD_TYPE_SERVICE_DATA, &len);
+
+    if (mijia_temp_hum_len)
+        *mijia_temp_hum_len = len;
+
+    return (mijia_temp_hum_t *)data;
+}
+
+static int mijia_temp_hum_is_broadcaster(uint8_t *adv_data, size_t adv_data_len)
+{
+    uint8_t len;
+    mijia_temp_hum_t *mijia_temp_hum = mijia_temp_hum_data_get(adv_data,
+        adv_data_len, &len);
+
+    if (!mijia_temp_hum || len < offsetof(mijia_temp_hum_t, data) ||
+        le16toh(mijia_temp_hum->service_uuid) != MIJIA_TEMP_HUM_SERVICE_UUID)
+    {
+        return 0;
+    }
+
+    return 1;
+}
+
+static void mijia_temp_hum_metadata_get(uint8_t *adv_data, size_t adv_data_len,
+    int rssi, broadcaster_meta_data_cb_t cb, void *ctx)
+{
+    char s[7];
+    uint8_t len;
+    mijia_temp_hum_t *mijia_temp_hum = mijia_temp_hum_data_get(adv_data,
+        adv_data_len, &len);
+
+    cb("MACAddress", _mactoa(mijia_temp_hum->mac), ctx);
+    sprintf(s, "%hhu", mijia_temp_hum->message_counter);
+    cb("MessageCounter", s, ctx);
+    if (mijia_temp_hum->data_type == MIJIA_TEMP_HUM_DATA_TYPE_TEMP)
+    {
+        sprintf(s, "%.1f", le16toh(*(uint16_t *)mijia_temp_hum->data) / 10.0);
+        cb("Temperature", s, ctx);
+    }
+    else if (mijia_temp_hum->data_type == MIJIA_TEMP_HUM_DATA_TYPE_HUM)
+    {
+        sprintf(s, "%.1f", le16toh(*(uint16_t *)mijia_temp_hum->data) / 10.0);
+        cb("Humidity", s, ctx);
+    }
+    else if (mijia_temp_hum->data_type == MIJIA_TEMP_HUM_DATA_TYPE_BATT)
+    {
+        sprintf(s, "%u", *mijia_temp_hum->data);
+        cb("BatteryLevel", s, ctx);
+    }
+    else if (mijia_temp_hum->data_type == MIJIA_TEMP_HUM_DATA_TYPE_TEMP_HUM)
+    {
+        sprintf(s, "%.1f", le16toh(*(uint16_t *)mijia_temp_hum->data) / 10.0);
+        cb("Temperature", s, ctx);
+        sprintf(s, "%.1f",
+            le16toh(*(uint16_t *)(mijia_temp_hum->data + 2)) / 10.0);
+        cb("Humidity", s, ctx);
+    }
+}
+static broadcaster_ops_t mijia_temp_hum_ops = {
+    .name = "Mijia Temp+Hum",
+    .is_broadcaster = mijia_temp_hum_is_broadcaster,
+    .metadata_get = mijia_temp_hum_metadata_get,
+};
+
 /* Common */
 static broadcaster_ops_t *broadcaster_ops[] = {
     &ibeacon_ops,
     &eddystone_ops,
+    &mijia_temp_hum_ops,
     NULL
 };
 
