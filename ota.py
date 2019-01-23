@@ -105,7 +105,7 @@ def main():
       'Default taken from configuration file')
   parser.add_argument('--mqtt-broker-password',
     help='MQTT broker password for initiating upgrade procedure. '
-        'Default taken from configuration file')
+      'Default taken from configuration file')
 
   args = parser.parse_args()
 
