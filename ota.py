@@ -100,6 +100,13 @@ def main():
   parser.add_argument('--mqtt-broker-port', type=int,
     help='MQTT broker port for initiating upgrade procedure. '
       'Default taken from configuration file')
+  parser.add_argument('--mqtt-broker-username',
+    help='MQTT broker username for initiating upgrade procedure. '  
+      'Default taken from configuration file')
+  parser.add_argument('--mqtt-broker-password',
+    help='MQTT broker password for initiating upgrade procedure. '
+        'Default taken from configuration file')
+
   args = parser.parse_args()
 
   config = json.load(open('data/config.json'))
@@ -107,10 +114,18 @@ def main():
     args.mqtt_broker_server = config['mqtt']['server']['host']
   if args.mqtt_broker_port is None:
     args.mqtt_broker_port = config['mqtt']['server']['port']
+  if args.mqtt_broker_username is None:
+    args.mqtt_broker_username = config['mqtt']['server']['username']
+  if args.mqtt_broker_password is None:
+    args.mqtt_broker_password = config['mqtt']['server']['password']
 
   # Connect to MQTT
   mqttc = mqtt.Client(userdata=args)
   mqttc.on_connect = on_mqtt_connect
+  
+  if args.mqtt_broker_username is not None or args.mqtt_broker_password is not None :
+    mqttc.username_pw_set(args.mqtt_broker_username, args.mqtt_broker_password)
+
   mqttc.connect(args.mqtt_broker_server, args.mqtt_broker_port)
   mqttc.loop_start()
 
