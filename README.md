@@ -52,6 +52,8 @@ is published.
   * `UID` frames: `Namespace`, `Instance` and `Distance`
   * `URL` frames: `URL` and `Distance`
   * `TLM` frames: `Voltage`, `Temperature`, `Count` and `Uptime`
+* For MiJia temperature and humidity sensors: `MACAddress`, `MessageCounter`,
+  `Temperature`, `Humidity` and `BatteryLevel`
 
 **Note:** Broadcaster topics are published without the retained flag regardless
 of what's defined in the configuration file.
