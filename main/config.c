@@ -81,6 +81,17 @@ const char **config_ble_characteristic_types_get(const char *uuid)
     return (const char **)ret;
 }
 
+int match_wildcard(const char *fmt, const char *str)
+{
+    while(*fmt && (*fmt == *str || *fmt == '?'))
+    {
+        fmt++;
+        str++;
+    }
+
+    return *fmt == *str || *fmt == '?';
+}
+
 cJSON *json_find_in_array(cJSON *arr, const char *item)
 {
     cJSON *cur;
@@ -90,7 +101,7 @@ cJSON *json_find_in_array(cJSON *arr, const char *item)
 
     for (cur = arr->child; cur; cur = cur->next)
     {
-        if (cJSON_IsString(cur) && !strcmp(item, cur->valuestring))
+        if (cJSON_IsString(cur) && match_wildcard(cur->valuestring, item))
             return cur;
     }
 
@@ -138,10 +149,16 @@ uint32_t config_ble_passkey_get(const char *mac)
 {
     cJSON *ble = cJSON_GetObjectItemCaseSensitive(config, "ble");
     cJSON *passkeys = cJSON_GetObjectItemCaseSensitive(ble, "passkeys");
-    cJSON *key = cJSON_GetObjectItemCaseSensitive(passkeys, mac);
+    cJSON *key;
 
-    if (cJSON_IsNumber(key))
-        return key->valuedouble;
+    if (!passkeys)
+        return 0;
+
+    for (key = passkeys->child; key; key = key->next)
+    {
+        if (cJSON_IsNumber(key) && match_wildcard(key->string, mac))
+            return key->valuedouble;
+    }
 
     return 0;
 }

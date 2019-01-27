@@ -142,18 +142,21 @@ configuration:
 * `whitelist`/`blacklist` - An array of MAC addresses of devices. If `whitelist`
   is used, only devices with a MAC address matching one of the entries will be
   connected while if `blacklist` is used, only devices that do not match any
-  entry will be connected
+  entry will be connected. It's possible to use the wildcard character `?` to
+  denote any value for a nibble.
 
     ```json
     "whitelist": [
-      "aa:bb:cc:dd:ee:ff"
+      "aa:bb:cc:dd:ee:ff",
+      "00:11:22:??:??:??"
     ]
     ```
 * `services` - Add additional services or override a existing definitions to the
   ones grabbed automatically during build from http://www.bluetooth.org. Each
   service can include a `name` field which will be used in the MQTT topic
   instead of its UUID. In addition, it's possible to define a white/black list
-  for discovered services. For example:
+  for discovered services. The white/black list UUIDs may contain the wildcard
+  character `?` to denote any value for a nibble. For example:
 
     ```json
     "services": {
@@ -163,7 +166,8 @@ configuration:
         }
       },
       "blacklist": [
-        "0000180a-0000-1000-8000-00805f9b34fb"
+        "0000180a-0000-1000-8000-00805f9b34fb",
+        "0000ffff-????-????-????-????????????"
       ]
     }
     ```
@@ -173,7 +177,8 @@ configuration:
   will be used in the MQTT topic instead of its UUID and a `types` array
   defining how to parse the byte array reflecting the characteristic's value.
   In addition, it's possible to define a white/black list for discovered
-  characteristics. For example:
+  characteristics. The white/black list UUIDs may contain the wildcard character
+  `?` to denote any value for a nibble. For example:
 
     ```json
     "characteristics": {
@@ -186,17 +191,20 @@ configuration:
         }
       },
       "blacklist": [
-        "00002a29-0000-1000-8000-00805f9b34fb"
+        "00002a29-0000-1000-8000-00805f9b34fb",
+        "0000ffff-????-????-????-????????????"
       ]
     }
     ```
 * `passkeys` - An object containing the passkey (number 000000~999999) that
   should be used for out-of-band authorization. Each entry is the MAC address of
-  the BLE device and the value is the passkey to use.
+  the BLE device and the value is the passkey to use. It's possible to use the
+  wildcard character `?` to denote any value for a nibble.
 
     ```json
     "passkeys": {
-      "aa:bb:cc:dd:ee:ff": 000000
+      "aa:bb:cc:dd:ee:ff": 000000,
+      "00:11:22:??:??:??": 123456
     }
     ```
 
