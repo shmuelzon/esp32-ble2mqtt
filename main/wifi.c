@@ -53,11 +53,17 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
         if (on_connected_cb)
             on_connected_cb();
         break;
+    case SYSTEM_EVENT_AP_STA_GOT_IP6:
+        ESP_LOGD(TAG, "Got IPV6 address: %s",
+        	inet6_ntoa(event->event_info.got_ip6.ip6_info.ip));
+        break;
     case SYSTEM_EVENT_STA_LOST_IP:
         ESP_LOGD(TAG, "Lost IP address");
         break;
     case SYSTEM_EVENT_STA_CONNECTED:
         ESP_LOGI(TAG, "Connected");
+        /* enable ipv6 */
+        tcpip_adapter_create_ip6_linklocal(TCPIP_ADAPTER_IF_STA);
         break;
     case SYSTEM_EVENT_STA_DISCONNECTED:
         ESP_LOGI(TAG, "Disconnected");
