@@ -194,6 +194,7 @@ static characteristic_type_t ble_atotype(const char *type)
         { "sint32", CHAR_TYPE_SINT32 },
         { "uint40", CHAR_TYPE_UINT40 },
         { "uint48", CHAR_TYPE_UINT48 },
+        { "uint128", CHAR_TYPE_UINT128 },
         { "utf8s", CHAR_TYPE_UTF8S },
         { "float64", CHAR_TYPE_FLOAT64 },
         { "sfloat", CHAR_TYPE_SFLOAT },
@@ -402,6 +403,7 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
             i += 4;
             break;
         }
+        case CHAR_TYPE_UINT128:
         case CHAR_TYPE_REG_CERT_DATA_LIST:
         case CHAR_TYPE_VARIABLE:
         case CHAR_TYPE_GATT_UUID:
@@ -582,6 +584,7 @@ uint8_t *atochar(ble_uuid_t uuid, const char *data, size_t len, size_t *ret_len)
             p += 8;
             break;
         }
+        case CHAR_TYPE_UINT128:
         /* IEEE-11073 floating point format */
         case CHAR_TYPE_SFLOAT:
         case CHAR_TYPE_FLOAT:
