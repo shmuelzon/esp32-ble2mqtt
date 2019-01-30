@@ -390,11 +390,84 @@ static broadcaster_ops_t mijia_temp_hum_ops = {
     .metadata_get = mijia_temp_hum_metadata_get,
 };
 
+/* Beewi Smart Door
+ * Note that the Beewi Smart Door sensor is also connectable. When connected, it
+ * provides battery information and door status history (without the current
+ * state). To overcome this, the sensor should be blacklisted so the app would
+ * not connect to it and the sensor would brodcast the current state. */
+#define BEEWI_SMART_DOOR_COMPANY_ID 0x000D
+#define BEEWI_SMART_DOOR_SERVICE_ID 0x08
+#define BEEWI_SMART_DOOR_DATA_TBD1 0x0C
+
+typedef struct {
+    uint16_t company_id;
+    uint8_t service_id;
+    uint8_t tbd1;
+    uint8_t status;
+    uint8_t tbd2;
+    uint8_t battery;
+} __attribute__((packed)) beewi_smart_door_t;
+
+static beewi_smart_door_t *beewi_smart_door_data_get(uint8_t *adv_data,
+    uint8_t adv_data_len, uint8_t *beewi_smart_door_len)
+{
+    uint8_t len;
+    uint8_t *data = esp_ble_resolve_adv_data(adv_data,
+        ESP_BLE_AD_MANUFACTURER_SPECIFIC_TYPE, &len);
+
+    if (beewi_smart_door_len)
+        *beewi_smart_door_len = len;
+
+    return (beewi_smart_door_t *)data;
+}
+
+static int beewi_smart_door_is_broadcaster(uint8_t *adv_data,
+    size_t adv_data_len)
+{
+    uint8_t len;
+    uint8_t *data = esp_ble_resolve_adv_data(adv_data,
+        ESP_BLE_AD_TYPE_NAME_CMPL, &len);
+
+    if (len == 16 && strncmp((char *)data, "BeeWi Smart Door", len))
+        return 0;
+
+    beewi_smart_door_t *beewi_smart_door = beewi_smart_door_data_get(adv_data,
+        adv_data_len, &len);
+
+    if (!beewi_smart_door || len != sizeof(beewi_smart_door_t))
+        return 0;
+
+    return 1;
+}
+
+static void beewi_smart_door_metadata_get(uint8_t *adv_data,
+    size_t adv_data_len, int rssi, broadcaster_meta_data_cb_t cb, void *ctx)
+{
+    char s[4];
+    beewi_smart_door_t *beewi_smart_door = beewi_smart_door_data_get(adv_data,
+        adv_data_len, NULL);
+
+    if (beewi_smart_door->tbd1 == BEEWI_SMART_DOOR_DATA_TBD1)
+    {
+        sprintf(s,"%hhu",beewi_smart_door->status );
+        cb("Status", s, ctx);
+        sprintf(s,"%hhu",beewi_smart_door->battery);
+        cb("Battery", s, ctx);
+   }
+}
+
+static broadcaster_ops_t beewi_smart_door_ops = {
+    .name = "BeeWi Smart Door",
+    .is_broadcaster = beewi_smart_door_is_broadcaster,
+    .metadata_get = beewi_smart_door_metadata_get,
+};
+
 /* Common */
 static broadcaster_ops_t *broadcaster_ops[] = {
     &ibeacon_ops,
     &eddystone_ops,
     &mijia_temp_hum_ops,
+    &beewi_smart_door_ops,
     NULL
 };
 

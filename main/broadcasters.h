@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define MAX_BROADCASTER_NAME 16
+#define MAX_BROADCASTER_NAME 32
 
 /* Event callback types */
 typedef void (*broadcaster_meta_data_cb_t)(char *name, char *val, void *ctx);
