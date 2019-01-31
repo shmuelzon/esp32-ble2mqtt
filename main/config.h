@@ -32,6 +32,10 @@ const char *config_mqtt_set_suffix_get(void);
 const char *config_wifi_ssid_get(void);
 const char *config_wifi_password_get(void);
 
+/* Remote Logging Configuration */
+const char *config_log_ip_get(void);
+uint16_t config_log_port_get(void);
+
 /* Configuration Update */
 int config_update_begin(config_update_handle_t *handle);
 int config_update_write(config_update_handle_t handle, uint8_t *data,

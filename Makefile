@@ -64,4 +64,7 @@ force-upload-config: $(OTA_CONFIG)
 	$(CONFIG_PYTHON) $(PROJECT_PATH)/ota.py -f $< \
 	  -v \"\" -t $(OTA_TARGET) -n Config
 
-.PHONY: upload force-upload upload-config force-upload-config
+remote-monitor:
+	$(CONFIG_PYTHON) $(PROJECT_PATH)/remote_log.py
+
+.PHONY: upload force-upload upload-config force-upload-config remote-monitor

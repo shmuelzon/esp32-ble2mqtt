@@ -279,6 +279,29 @@ const char *config_wifi_password_get(void)
     return NULL;
 }
 
+/* Remote Logging Configuration */
+const char *config_log_ip_get(void)
+{
+    cJSON *log = cJSON_GetObjectItemCaseSensitive(config, "log");
+    cJSON *ip = cJSON_GetObjectItemCaseSensitive(log, "ip");
+
+    if (cJSON_IsString(ip))
+        return ip->valuestring;
+
+    return NULL;
+}
+
+uint16_t config_log_port_get(void)
+{
+    cJSON *log = cJSON_GetObjectItemCaseSensitive(config, "log");
+    cJSON *port = cJSON_GetObjectItemCaseSensitive(log, "port");
+
+    if (cJSON_IsNumber(port))
+        return port->valuedouble;
+
+    return NULL;
+}
+
 /* Configuration Update */
 int config_update_begin(config_update_handle_t *handle)
 {

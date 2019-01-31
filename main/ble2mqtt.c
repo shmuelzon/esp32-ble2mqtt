@@ -2,6 +2,7 @@
 #include "broadcasters.h"
 #include "ble.h"
 #include "ble_utils.h"
+#include "log.h"
 #include "mqtt.h"
 #include "ota.h"
 #include "wifi.h"
@@ -109,6 +110,7 @@ static void cleanup(void)
 /* Wi-Fi callback functions */
 static void wifi_on_connected(void)
 {
+    log_start(config_log_ip_get(), config_log_port_get());
     ESP_LOGI(TAG, "Connected to WiFi, connecting to MQTT");
     mqtt_connect(config_mqtt_host_get(), config_mqtt_port_get(),
         config_mqtt_client_id_get(), config_mqtt_username_get(),
@@ -117,6 +119,7 @@ static void wifi_on_connected(void)
 
 static void wifi_on_disconnected(void)
 {
+    log_stop();
     ESP_LOGI(TAG, "Disconnected from WiFi, stopping MQTT");
     mqtt_disconnect();
     /* We don't get notified when manually stopping MQTT */
@@ -397,6 +400,9 @@ void app_main()
 
     /* Init configuration */
     ESP_ERROR_CHECK(config_initialize());
+
+    /* Init remote logging */
+    log_initialize();
 
     /* Init OTA */
     ota_initialize();

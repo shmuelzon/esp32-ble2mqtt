@@ -70,6 +70,12 @@ and flash (make sure to modify the serial device your ESP32 is connected to):
 make flash
 ```
 
+## Remote Logging
+
+If configured, the application can send the logs remotely via UDP to another
+host to allow receiving logs from remote devices without a serial connection.
+To receive these logs on your host, execute `make remote-monitor`.
+
 ## Configuration
 
 The configuration file provided in located at
@@ -207,6 +213,19 @@ configuration:
       "00:11:22:??:??:??": 123456
     }
     ```
+
+The optional `log` section below includes the following entries:
+```json
+{
+  "log": {
+    "ip": "224.0.0.200",
+    "port": 5000
+  }
+}
+```
+* `ip` - The IP address to send the logs to. This may be a unicast, broadcast
+  or multicast IP address
+* `port` - The destination UDP port
 
 ## OTA
 
