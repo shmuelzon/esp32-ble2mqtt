@@ -356,6 +356,7 @@ static void mijia_temp_hum_metadata_get(uint8_t *adv_data, size_t adv_data_len,
     uint8_t len;
     mijia_temp_hum_t *mijia_temp_hum = mijia_temp_hum_data_get(adv_data,
         adv_data_len, &len);
+        
     cb("MACAddress", _mactoa(mijia_temp_hum->mac), ctx);
     sprintf(s, "%hhu", mijia_temp_hum->message_counter);
     cb("MessageCounter", s, ctx);
@@ -389,67 +390,81 @@ static broadcaster_ops_t mijia_temp_hum_ops = {
     .metadata_get = mijia_temp_hum_metadata_get,
 };
 /* Beewi Smart Door */
-#define BEEWI_SMART_DOOR_COMPANY_ID     0x000D
-#define BEEWI_SMART_DOOR_SERVICE_ID     0x08 
-#define BEEWI_SMART_DOOR_DATA_TYPE_STAT 0x0C
-#define BEEWI_SMART_DOOR_DATA_TYPE_BATT 0x06
+#define BEEWI_SMART_DOOR_COMPANY_ID 0x000D
+#define BEEWI_SMART_DOOR_SERVICE_ID 0x08 
+#define BEEWI_SMART_DOOR_DATA_TBD1 0x0C
+#define BEEWI_SMART_DOOR_DATA_TBD2 0x06 //unused here
 
 
 typedef struct {
     uint16_t company_id;
     uint8_t  service_id;
-	uint8_t  type_stat;
+    uint8_t  tbd1;
     uint8_t  status;
-	uint8_t  type_batt;
-	uint8_t  battery;
+    uint8_t  tbd2;
+    uint8_t  battery;
 } __attribute__((packed)) beewi_smart_door_t;
 
-static beewi_smart_door_t *beewi_smart_door_data_get(uint8_t *adv_data, uint8_t adv_data_len,
-    uint8_t *beewi_smart_door_len)
+static beewi_smart_door_t *beewi_smart_door_data_get(uint8_t *adv_data, 
+    uint8_t adv_data_len, uint8_t *beewi_smart_door_len)
 {
+    
+    uint8_t name_len;
     uint8_t len;
+    char *name = (char *)esp_ble_resolve_adv_data(adv_data, 
+        ESP_BLE_AD_TYPE_NAME_CMPL, &name_len);
+    if (strncmp(name, "BeeWi Smart Door", name_len) != 0)
+        return NULL;
+       
     uint8_t *data = esp_ble_resolve_adv_data(adv_data,
         ESP_BLE_AD_MANUFACTURER_SPECIFIC_TYPE, &len);
-
+        
     if (beewi_smart_door_len)
         *beewi_smart_door_len = len;
 
     return (beewi_smart_door_t *)data;
 }
 
-static int beewi_smart_door_is_broadcaster(uint8_t *adv_data, size_t adv_data_len)
+static int beewi_smart_door_is_broadcaster(uint8_t *adv_data, 
+    size_t adv_data_len)
 {
     uint8_t len;
-    beewi_smart_door_t *beewi_smart_door = beewi_smart_door_data_get(adv_data, adv_data_len, &len);
-
+    //char dev_name[16]; 
+    //uint8_t dev_len = (uint8_t)sizeof(dev_name);
+    
+    beewi_smart_door_t *beewi_smart_door = beewi_smart_door_data_get(adv_data,
+    adv_data_len, &len);
+    
+    /* Technically, we should also prevent connecting to the device, as it stops broadcasting 
+   then. Or just once to get device name, and other static infos. Interesting data as opening status & battery are broadcasted. 
+   Battery data is also available as characteristic, but not the essential data, the door status.
+   Needs to blacklist the mac in service config to make this working*/
+  
+      
     if (!beewi_smart_door || len != sizeof(beewi_smart_door_t))
         return 0;
 
-    /* Technically, we should also prevent connecting to the device, as it stops broadcasting 
-       then. Or just once to get device name, and other static infos. Interesting data as opening status & battery are broadcasted. 
-	   Battery data is also available as characteristic, but not the essential data, the door status.
-	   Also it seems to lock the device ( todo: see wtf happening. )
-	   Needs to blacklist the mac in service config to make this working*/
-	   
-    return le16toh(beewi_smart_door->company_id) == BEEWI_SMART_DOOR_COMPANY_ID;
+    else return 1;
+    
 }
 
-static void beewi_smart_door_metadata_get(uint8_t *adv_data, size_t adv_data_len,
-    int rssi, broadcaster_meta_data_cb_t cb, void *ctx)
+static void beewi_smart_door_metadata_get(uint8_t *adv_data, 
+    size_t adv_data_len, int rssi, broadcaster_meta_data_cb_t cb, void *ctx)
 {
     char s[6];
-    beewi_smart_door_t *beewi_smart_door = beewi_smart_door_data_get(adv_data, adv_data_len, NULL);
-    if ((beewi_smart_door->service_id == BEEWI_SMART_DOOR_SERVICE_ID) &&
-	    (beewi_smart_door->type_stat == BEEWI_SMART_DOOR_DATA_TYPE_STAT)) {
-            sprintf(s,"%i",beewi_smart_door->status );
+    beewi_smart_door_t *beewi_smart_door = beewi_smart_door_data_get(adv_data,
+    adv_data_len, NULL);
+    
+    if (beewi_smart_door->tbd1 == BEEWI_SMART_DOOR_DATA_TBD1) { 
+            sprintf(s,"%hhu",beewi_smart_door->status );
             cb("Status", s, ctx);
-			sprintf(s,"%i",beewi_smart_door->battery);
-			cb("Battery", s, ctx);
-	   }	
+            sprintf(s,"%hhu",beewi_smart_door->battery);
+            cb("Battery", s, ctx);
+       }    
 }
 
 static broadcaster_ops_t beewi_smart_door_ops = {
-    .name = "Beewi",
+    .name = "BeeWi Smart Door",
     .is_broadcaster = beewi_smart_door_is_broadcaster,
     .metadata_get = beewi_smart_door_metadata_get,
 };
@@ -459,7 +474,7 @@ static broadcaster_ops_t *broadcaster_ops[] = {
     &ibeacon_ops,
     &eddystone_ops,
     &mijia_temp_hum_ops,
-	&beewi_smart_door_ops,
+    &beewi_smart_door_ops,
     NULL
 };
 
