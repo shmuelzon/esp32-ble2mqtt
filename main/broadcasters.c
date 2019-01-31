@@ -408,14 +408,7 @@ typedef struct {
 static beewi_smart_door_t *beewi_smart_door_data_get(uint8_t *adv_data, 
     uint8_t adv_data_len, uint8_t *beewi_smart_door_len)
 {
-    
-    uint8_t name_len;
     uint8_t len;
-    char *name = (char *)esp_ble_resolve_adv_data(adv_data, 
-        ESP_BLE_AD_TYPE_NAME_CMPL, &name_len);
-    if (strncmp(name, "BeeWi Smart Door", name_len) != 0)
-        return NULL;
-       
     uint8_t *data = esp_ble_resolve_adv_data(adv_data,
         ESP_BLE_AD_MANUFACTURER_SPECIFIC_TYPE, &len);
         
@@ -428,10 +421,14 @@ static beewi_smart_door_t *beewi_smart_door_data_get(uint8_t *adv_data,
 static int beewi_smart_door_is_broadcaster(uint8_t *adv_data, 
     size_t adv_data_len)
 {
-    uint8_t len;
-    //char dev_name[16]; 
-    //uint8_t dev_len = (uint8_t)sizeof(dev_name);
+    uint8_t name_len;
+    char *name = (char *)esp_ble_resolve_adv_data(adv_data, 
+        ESP_BLE_AD_TYPE_NAME_CMPL, &name_len);
+    if (strncmp(name, "BeeWi Smart Door", name_len) != 0)
+        return 0
+    ;
     
+    uint8_t len;
     beewi_smart_door_t *beewi_smart_door = beewi_smart_door_data_get(adv_data,
     adv_data_len, &len);
     
