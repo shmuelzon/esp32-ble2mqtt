@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 /* Constants */
 static const char *TAG = "Log";
