@@ -30,7 +30,7 @@ SPIFFS_OFFSET=$(word 4, $(SPIFFS_PARTITION))
 SPIFFS_SIZE=$(word 5, $(SPIFFS_PARTITION))
 
 # Build SPIFFS image
-$(SPIFFS_IMAGE): $(PROJECT_PATH)/data $(MKSPIFFS) partitions.csv
+$(SPIFFS_IMAGE): $(PROJECT_PATH)/data $(MKSPIFFS) partitions.csv validate_config
 	$(MKSPIFFS) -c $< -b 4096 -p 256 -s $(SPIFFS_SIZE) $@
 
 # Need to generate SPIFFS image before flashing
@@ -67,4 +67,9 @@ force-upload-config: $(OTA_CONFIG)
 remote-monitor:
 	$(CONFIG_PYTHON) $(PROJECT_PATH)/remote_log.py
 
-.PHONY: upload force-upload upload-config force-upload-config remote-monitor
+validate_config: $(OTA_CONFIG)
+	cat $< | $(CONFIG_PYTHON) -m json.tool > /dev/null 2>&1 || \
+	  (echo "Error: Invalid JSON in configuration file."; exit 1)
+
+.PHONY: upload force-upload upload-config force-upload-config remote-monitor \
+  validate_config
