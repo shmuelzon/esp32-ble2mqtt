@@ -791,7 +791,7 @@ int ble_initialize(void)
         ESP_PWR_LVL_P7));
     ESP_ERROR_CHECK(esp_ble_gap_register_callback(gap_cb));
     ESP_ERROR_CHECK(esp_ble_gap_config_local_privacy(true));
-    ESP_ERROR_CHECK(esp_ble_gattc_register_callback(esp_gattc_cb))
+    ESP_ERROR_CHECK(esp_ble_gattc_register_callback(esp_gattc_cb));
     ESP_ERROR_CHECK(esp_ble_gattc_app_register(0));
     ESP_ERROR_CHECK(esp_ble_gatt_set_local_mtu(200));
     /* Set security IO capability to KeyboardOnly */
