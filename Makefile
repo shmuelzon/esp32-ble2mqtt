@@ -65,7 +65,7 @@ force-upload-config: $(OTA_CONFIG)
 	  -v \"\" -t $(OTA_TARGET) -n Config
 
 remote-monitor:
-	$(CONFIG_PYTHON) $(PROJECT_PATH)/remote_log.py
+	$(CONFIG_PYTHON) -u $(PROJECT_PATH)/remote_log.py
 
 validate_config: $(OTA_CONFIG)
 	cat $< | $(CONFIG_PYTHON) -m json.tool > /dev/null 2>&1 || \
