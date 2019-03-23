@@ -17,7 +17,7 @@
 
 static const char *TAG = "BLE";
 static esp_ble_scan_params_t ble_scan_params = {
-    .scan_type = BLE_SCAN_TYPE_ACTIVE,
+    .scan_type = BLE_SCAN_TYPE_PASSIVE,
     .own_addr_type = BLE_ADDR_TYPE_RANDOM,
     .scan_filter_policy = BLE_SCAN_FILTER_ALLOW_ALL,
     /* Scan interval. This is defined as the time interval from
