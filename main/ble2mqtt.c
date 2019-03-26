@@ -402,10 +402,10 @@ void app_main()
     ESP_ERROR_CHECK(config_initialize());
 
     /* Init remote logging */
-    log_initialize();
+    ESP_ERROR_CHECK(log_initialize());
 
     /* Init OTA */
-    ota_initialize();
+    ESP_ERROR_CHECK(ota_initialize());
     ota_set_on_completed_cb(ota_on_completed);
 
     /* Init Wi-Fi */
