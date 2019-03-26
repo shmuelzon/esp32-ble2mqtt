@@ -410,6 +410,7 @@ void app_main()
 
     /* Init Wi-Fi */
     ESP_ERROR_CHECK(wifi_initialize());
+    wifi_hostname_set(device_name_get());
     wifi_set_on_connected_cb(wifi_on_connected);
     wifi_set_on_disconnected_cb(wifi_on_disconnected);
 
@@ -430,6 +431,5 @@ void app_main()
     ble_set_on_passkey_requested_cb(ble_on_passkey_requested);
 
     /* Start by connecting to WiFi */
-    wifi_hostname_set(device_name_get());
     wifi_connect(config_wifi_ssid_get(), config_wifi_password_get());
 }
