@@ -3,6 +3,7 @@
 #include <esp_event_loop.h>
 #include <esp_log.h>
 #include <esp_wifi.h>
+#include <mdns.h>
 #include <arpa/inet.h>
 #include <string.h>
 
@@ -71,6 +72,8 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
         ESP_LOGD(TAG, "Unhandled event (%d)", event->event_id);
         break;
     }
+
+    mdns_handle_system_event(ctx, event);
     return ESP_OK;
 }
 

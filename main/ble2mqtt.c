@@ -11,6 +11,7 @@
 #include <esp_system.h>
 #include <nvs.h>
 #include <nvs_flash.h>
+#include <mdns.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/task.h>
@@ -674,6 +675,10 @@ void app_main()
     wifi_hostname_set(device_name_get());
     wifi_set_on_connected_cb(_wifi_on_connected);
     wifi_set_on_disconnected_cb(_wifi_on_disconnected);
+
+    /* Init mDNS */
+    ESP_ERROR_CHECK(mdns_init());
+    mdns_hostname_set(device_name_get());
 
     /* Init MQTT */
     ESP_ERROR_CHECK(mqtt_initialize());
