@@ -5,6 +5,7 @@
 #include "log.h"
 #include "mqtt.h"
 #include "ota.h"
+#include "resolve.h"
 #include "wifi.h"
 #include <esp_err.h>
 #include <esp_log.h>
@@ -679,6 +680,9 @@ void app_main()
     /* Init mDNS */
     ESP_ERROR_CHECK(mdns_init());
     mdns_hostname_set(device_name_get());
+
+    /* Init name resolver */
+    ESP_ERROR_CHECK(resolve_initialize());
 
     /* Init MQTT */
     ESP_ERROR_CHECK(mqtt_initialize());

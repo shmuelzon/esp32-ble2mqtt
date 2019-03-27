@@ -1,4 +1,5 @@
 #include "mqtt.h"
+#include "resolve.h"
 #include <esp_err.h>
 #include <esp_log.h>
 #include <mqtt_client.h>
@@ -254,7 +255,7 @@ int mqtt_connect(const char *host, uint16_t port, const char *client_id,
 {
     esp_mqtt_client_config_t config = {
         .event_handle = mqtt_event_cb,
-        .host = host,
+        .host = resolve_host(host),
         .port = port,
         .client_id = client_id,
         .username = username,
