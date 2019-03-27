@@ -11,6 +11,9 @@
 #include <esp_system.h>
 #include <nvs.h>
 #include <nvs_flash.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+#include <freertos/task.h>
 #include <string.h>
 
 #define MAX_TOPIC_LEN 256
@@ -386,6 +389,264 @@ static uint32_t ble_on_passkey_requested(mac_addr_t mac)
     return passkey;
 }
 
+/* BLE2MQTT Task and event callbacks */
+typedef enum {
+    EVENT_TYPE_OTA_COMPLETED,
+    EVENT_TYPE_WIFI_CONNECTED,
+    EVENT_TYPE_WIFI_DISCONNECTED,
+    EVENT_TYPE_MQTT_CONNECTED,
+    EVENT_TYPE_MQTT_DISCONNECTED,
+    EVENT_TYPE_BLE_BROADCASTER_DISCOVERED,
+    EVENT_TYPE_BLE_DEVICE_DISCOVERED,
+    EVENT_TYPE_BLE_DEVICE_CONNECTED,
+    EVENT_TYPE_BLE_DEVICE_DISCONNECTED,
+    EVENT_TYPE_BLE_DEVICE_SERVICES_DISCOVERED,
+    EVENT_TYPE_BLE_DEVICE_CHARACTERISTIC_VALUE,
+} event_type_t;
+
+typedef struct {
+    event_type_t type;
+    union {
+        struct {
+            ota_type_t type;
+            ota_err_t err;
+        } ota_completed;
+        struct {
+            mac_addr_t mac;
+            uint8_t *adv_data;
+            size_t adv_data_len;
+            int rssi;
+            broadcaster_ops_t *ops;
+        } ble_broadcaster_discovered;
+        struct {
+            mac_addr_t mac;
+        } ble_device_discovered;
+        struct {
+            mac_addr_t mac;
+        } ble_device_connected;
+        struct {
+            mac_addr_t mac;
+        } ble_device_disconnected;
+        struct {
+            mac_addr_t mac;
+        } ble_device_services_discovered;
+        struct {
+            mac_addr_t mac;
+            ble_uuid_t service;
+            ble_uuid_t characteristic;
+            uint8_t *value;
+            size_t value_len;
+        } ble_device_characteristic_value;
+    };
+} event_t;
+
+static QueueHandle_t event_queue;
+
+static void ble2mqtt_handle_event(event_t *event)
+{
+    switch (event->type)
+    {
+    case EVENT_TYPE_OTA_COMPLETED:
+        ota_on_completed(event->ota_completed.type, event->ota_completed.err);
+        break;
+    case EVENT_TYPE_WIFI_CONNECTED:
+        wifi_on_connected();
+        break;
+    case EVENT_TYPE_WIFI_DISCONNECTED:
+        wifi_on_disconnected();
+        break;
+    case EVENT_TYPE_MQTT_CONNECTED:
+        mqtt_on_connected();
+        break;
+    case EVENT_TYPE_MQTT_DISCONNECTED:
+        mqtt_on_disconnected();
+        break;
+    case EVENT_TYPE_BLE_BROADCASTER_DISCOVERED:
+        ble_on_broadcaster_discovered(event->ble_broadcaster_discovered.mac,
+            event->ble_broadcaster_discovered.adv_data,
+            event->ble_broadcaster_discovered.adv_data_len,
+            event->ble_broadcaster_discovered.rssi,
+            event->ble_broadcaster_discovered.ops);
+        free(event->ble_broadcaster_discovered.adv_data);
+        break;
+    case EVENT_TYPE_BLE_DEVICE_DISCOVERED:
+        ble_on_device_discovered(event->ble_device_discovered.mac);
+        break;
+    case EVENT_TYPE_BLE_DEVICE_CONNECTED:
+        ble_on_device_connected(event->ble_device_connected.mac);
+        break;
+    case EVENT_TYPE_BLE_DEVICE_DISCONNECTED:
+        ble_on_device_disconnected(event->ble_device_disconnected.mac);
+        break;
+    case EVENT_TYPE_BLE_DEVICE_SERVICES_DISCOVERED:
+        ble_on_device_services_discovered(
+            event->ble_device_services_discovered.mac);
+        break;
+    case EVENT_TYPE_BLE_DEVICE_CHARACTERISTIC_VALUE:
+        ble_on_device_characteristic_value(
+            event->ble_device_characteristic_value.mac,
+            event->ble_device_characteristic_value.service,
+            event->ble_device_characteristic_value.characteristic,
+            event->ble_device_characteristic_value.value,
+            event->ble_device_characteristic_value.value_len);
+        free(event->ble_device_characteristic_value.value);
+        break;
+    }
+
+    free(event);
+}
+
+static void ble2mqtt_task(void *pvParameter)
+{
+    event_t *event;
+
+    while (1)
+    {
+        if (xQueueReceive(event_queue, &event, portMAX_DELAY) != pdTRUE)
+            continue;
+
+        ble2mqtt_handle_event(event);
+    }
+
+    vTaskDelete(NULL);
+}
+
+static int start_ble2mqtt_task(void)
+{
+    if (!(event_queue = xQueueCreate(10, sizeof(event_t *))))
+        return -1;
+
+    if (xTaskCreatePinnedToCore(ble2mqtt_task, "ble2mqtt_task", 4096, NULL, 5,
+        NULL, 1) != pdPASS)
+    {
+        return -1;
+    }
+
+    return 0;
+}
+
+static void _ota_on_completed(ota_type_t type, ota_err_t err)
+{
+    event_t *event = malloc(sizeof(*event));
+
+    event->type = EVENT_TYPE_OTA_COMPLETED;
+    event->ota_completed.type = type;
+    event->ota_completed.err = err;
+
+    xQueueSend(event_queue, &event, portMAX_DELAY);
+}
+
+static void _wifi_on_connected(void)
+{
+    event_t *event = malloc(sizeof(*event));
+
+    event->type = EVENT_TYPE_WIFI_CONNECTED;
+
+    xQueueSend(event_queue, &event, portMAX_DELAY);
+}
+
+static void _wifi_on_disconnected(void)
+{
+    event_t *event = malloc(sizeof(*event));
+
+    event->type = EVENT_TYPE_WIFI_DISCONNECTED;
+
+    xQueueSend(event_queue, &event, portMAX_DELAY);
+}
+
+static void _mqtt_on_connected(void)
+{
+    event_t *event = malloc(sizeof(*event));
+
+    event->type = EVENT_TYPE_MQTT_CONNECTED;
+
+    xQueueSend(event_queue, &event, portMAX_DELAY);
+}
+
+static void _mqtt_on_disconnected(void)
+{
+    event_t *event = malloc(sizeof(*event));
+
+    event->type = EVENT_TYPE_MQTT_DISCONNECTED;
+
+    xQueueSend(event_queue, &event, portMAX_DELAY);
+}
+
+static void _ble_on_broadcaster_discovered(mac_addr_t mac, uint8_t *adv_data,
+    size_t adv_data_len, int rssi, broadcaster_ops_t *ops)
+{
+    event_t *event = malloc(sizeof(*event));
+
+    event->type = EVENT_TYPE_BLE_BROADCASTER_DISCOVERED;
+    memcpy(event->ble_broadcaster_discovered.mac, mac, sizeof(mac_addr_t));
+    event->ble_broadcaster_discovered.adv_data = malloc(adv_data_len);
+    memcpy(event->ble_broadcaster_discovered.adv_data, adv_data, adv_data_len);
+    event->ble_broadcaster_discovered.adv_data_len = adv_data_len;
+    event->ble_broadcaster_discovered.rssi = rssi;
+    event->ble_broadcaster_discovered.ops = ops;
+
+    xQueueSend(event_queue, &event, portMAX_DELAY);
+}
+
+static void _ble_on_device_discovered(mac_addr_t mac)
+{
+    event_t *event = malloc(sizeof(*event));
+
+    event->type = EVENT_TYPE_BLE_DEVICE_DISCOVERED;
+    memcpy(event->ble_device_discovered.mac, mac, sizeof(mac_addr_t));
+
+    xQueueSend(event_queue, &event, portMAX_DELAY);
+}
+
+static void _ble_on_device_connected(mac_addr_t mac)
+{
+    event_t *event = malloc(sizeof(*event));
+
+    event->type = EVENT_TYPE_BLE_DEVICE_CONNECTED;
+    memcpy(event->ble_device_connected.mac, mac, sizeof(mac_addr_t));
+
+    xQueueSend(event_queue, &event, portMAX_DELAY);
+}
+
+static void _ble_on_device_disconnected(mac_addr_t mac)
+{
+    event_t *event = malloc(sizeof(*event));
+
+    event->type = EVENT_TYPE_BLE_DEVICE_DISCONNECTED;
+    memcpy(event->ble_device_disconnected.mac, mac, sizeof(mac_addr_t));
+
+    xQueueSend(event_queue, &event, portMAX_DELAY);
+}
+
+static void _ble_on_device_services_discovered(mac_addr_t mac)
+{
+    event_t *event = malloc(sizeof(*event));
+
+    event->type = EVENT_TYPE_BLE_DEVICE_SERVICES_DISCOVERED;
+    memcpy(event->ble_device_services_discovered.mac, mac, sizeof(mac_addr_t));
+
+    xQueueSend(event_queue, &event, portMAX_DELAY);
+}
+
+static void _ble_on_device_characteristic_value(mac_addr_t mac,
+    ble_uuid_t service, ble_uuid_t characteristic, uint8_t *value,
+    size_t value_len)
+{
+    event_t *event = malloc(sizeof(*event));
+
+    event->type = EVENT_TYPE_BLE_DEVICE_CHARACTERISTIC_VALUE;
+    memcpy(event->ble_device_characteristic_value.mac, mac, sizeof(mac_addr_t));
+    memcpy(event->ble_device_characteristic_value.service, service,
+        sizeof(ble_uuid_t));
+    memcpy(event->ble_device_characteristic_value.characteristic,
+        characteristic, sizeof(ble_uuid_t));
+    event->ble_device_characteristic_value.value = malloc(value_len);
+    memcpy(event->ble_device_characteristic_value.value, value, value_len);
+    event->ble_device_characteristic_value.value_len = value_len;
+
+    xQueueSend(event_queue, &event, portMAX_DELAY);
+}
+
 void app_main()
 {
     /* Initialize NVS */
@@ -406,29 +667,33 @@ void app_main()
 
     /* Init OTA */
     ESP_ERROR_CHECK(ota_initialize());
-    ota_set_on_completed_cb(ota_on_completed);
+    ota_set_on_completed_cb(_ota_on_completed);
 
     /* Init Wi-Fi */
     ESP_ERROR_CHECK(wifi_initialize());
     wifi_hostname_set(device_name_get());
-    wifi_set_on_connected_cb(wifi_on_connected);
-    wifi_set_on_disconnected_cb(wifi_on_disconnected);
+    wifi_set_on_connected_cb(_wifi_on_connected);
+    wifi_set_on_disconnected_cb(_wifi_on_disconnected);
 
     /* Init MQTT */
     ESP_ERROR_CHECK(mqtt_initialize());
-    mqtt_set_on_connected_cb(mqtt_on_connected);
-    mqtt_set_on_disconnected_cb(mqtt_on_disconnected);
+    mqtt_set_on_connected_cb(_mqtt_on_connected);
+    mqtt_set_on_disconnected_cb(_mqtt_on_disconnected);
 
     /* Init BLE */
     ESP_ERROR_CHECK(ble_initialize());
-    ble_set_on_broadcaster_discovered_cb(ble_on_broadcaster_discovered);
-    ble_set_on_device_discovered_cb(ble_on_device_discovered);
-    ble_set_on_device_connected_cb(ble_on_device_connected);
-    ble_set_on_device_disconnected_cb(ble_on_device_disconnected);
-    ble_set_on_device_services_discovered_cb(ble_on_device_services_discovered);
+    ble_set_on_broadcaster_discovered_cb(_ble_on_broadcaster_discovered);
+    ble_set_on_device_discovered_cb(_ble_on_device_discovered);
+    ble_set_on_device_connected_cb(_ble_on_device_connected);
+    ble_set_on_device_disconnected_cb(_ble_on_device_disconnected);
+    ble_set_on_device_services_discovered_cb(
+        _ble_on_device_services_discovered);
     ble_set_on_device_characteristic_value_cb(
-        ble_on_device_characteristic_value);
+        _ble_on_device_characteristic_value);
     ble_set_on_passkey_requested_cb(ble_on_passkey_requested);
+
+    /* Start BLE2MQTT task */
+    ESP_ERROR_CHECK(start_ble2mqtt_task());
 
     /* Start by connecting to WiFi */
     wifi_connect(config_wifi_ssid_get(), config_wifi_password_get());
