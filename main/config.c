@@ -280,10 +280,10 @@ const char *config_wifi_password_get(void)
 }
 
 /* Remote Logging Configuration */
-const char *config_log_ip_get(void)
+const char *config_log_host_get(void)
 {
     cJSON *log = cJSON_GetObjectItemCaseSensitive(config, "log");
-    cJSON *ip = cJSON_GetObjectItemCaseSensitive(log, "ip");
+    cJSON *ip = cJSON_GetObjectItemCaseSensitive(log, "host");
 
     if (cJSON_IsString(ip))
         return ip->valuestring;

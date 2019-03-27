@@ -115,7 +115,7 @@ static void cleanup(void)
 /* Wi-Fi callback functions */
 static void wifi_on_connected(void)
 {
-    log_start(config_log_ip_get(), config_log_port_get());
+    log_start(config_log_host_get(), config_log_port_get());
     ESP_LOGI(TAG, "Connected to WiFi, connecting to MQTT");
     mqtt_connect(config_mqtt_host_get(), config_mqtt_port_get(),
         config_mqtt_client_id_get(), config_mqtt_username_get(),

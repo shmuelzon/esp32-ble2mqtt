@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-int log_start(const char *ip, uint16_t port);
+int log_start(const char *host, uint16_t port);
 int log_stop(void);
 
 int log_initialize(void);

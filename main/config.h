@@ -33,7 +33,7 @@ const char *config_wifi_ssid_get(void);
 const char *config_wifi_password_get(void);
 
 /* Remote Logging Configuration */
-const char *config_log_ip_get(void);
+const char *config_log_host_get(void);
 uint16_t config_log_port_get(void);
 
 /* Configuration Update */

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
+from builtins import str
 import argparse
 import datetime
 import ipaddress
@@ -22,13 +23,13 @@ def get_hostname(addr):
     return ip
 
 def log_listener(args):
-  ip = ipaddress.ip_address(args.ip)
+  ip = ipaddress.ip_address(str(socket.gethostbyname(args.host)))
 
   # Set up logging server
   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   if ip.is_multicast:
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    mreq = struct.pack("4sl", socket.inet_aton(args.ip), socket.INADDR_ANY)
+    mreq = struct.pack("4sl", socket.inet_aton(str(ip)), socket.INADDR_ANY)
     sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
   sock.bind(('', args.port))
 
@@ -43,16 +44,16 @@ def log_listener(args):
 
 def main():
   parser = argparse.ArgumentParser(description='Remote logging server')
-  parser.add_argument('-i', '--ip', help='IP address to listen on. '
+  parser.add_argument('--host', help='Host or IP address to listen on. '
     'Default take from configuration file')
-  parser.add_argument('-p', '--port', type=int, help='UDP port to listen on. '
+  parser.add_argument('--port', type=int, help='UDP port to listen on. '
     'Default take from configuration file')
   args = parser.parse_args()
 
   config = json.load(open('data/config.json'))
   try:
-    if args.ip is None:
-      args.ip = config['log']['ip']
+    if args.host is None:
+      args.host = config['log']['host']
     if args.port is None:
       args.port = config['log']['port']
   except KeyError:

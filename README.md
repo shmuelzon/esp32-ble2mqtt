@@ -219,13 +219,13 @@ The optional `log` section below includes the following entries:
 ```json
 {
   "log": {
-    "ip": "224.0.0.200",
+    "host": "224.0.0.200",
     "port": 5000
   }
 }
 ```
-* `ip` - The IP address to send the logs to. This may be a unicast, broadcast
-  or multicast IP address
+* `host` - The hostname or IP address to send the logs to. In case of an IP
+  address, this may be a unicast, broadcast or multicast address
 * `port` - The destination UDP port
 
 ## OTA

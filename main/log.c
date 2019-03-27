@@ -1,4 +1,5 @@
 #include "log.h"
+#include "resolve.h"
 #include <esp_log.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -36,15 +37,15 @@ static int log_vprintf(const char *fmt, va_list l)
     return ret;
 }
 
-int log_start(const char *ip, uint16_t port)
+int log_start(const char *host, uint16_t port)
 {
-    if (!ip || !port)
+    if (!host || !port)
         return -1;
 
     memset(&dst, 0, sizeof(dst));
     dst.sin_family = AF_INET;
     dst.sin_port = htons(port);
-    if (!inet_pton(AF_INET, ip, &dst.sin_addr))
+    if (!inet_pton(AF_INET, resolve_host(host), &dst.sin_addr))
     {
         ESP_LOGE(TAG, "Failed parsing IP address");
         goto Error;
