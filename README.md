@@ -34,6 +34,11 @@ additional topics to help book-keeping:
 * `<Peripheral MAC address>/Owner` - The name of the BLE2MQTT instance currently
   connected to the peripheral, e.g. `BLE2MQTT-XXXX`, where `XXXX` are the last 2
   octets of the ESP32's WiFi MAC address
+* `BLE2MQTT-XXX/Version` - The BLE2MQTT application version currently running
+* `BLE2MQTT-XXX/ConfigVersion` - The BLE2MQTT configuration version currently
+  loaded (MD5 hash of configuration file)
+* `BLE2MQTT-XXX/Uptime` - The uptime of the ESP32, in seconds, published every
+  minute
 
 ## Broadcasters
 

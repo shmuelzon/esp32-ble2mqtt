@@ -16,6 +16,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/task.h>
+#include <freertos/timers.h>
 #include <string.h>
 
 #define MAX_TOPIC_LEN 256
@@ -38,6 +39,43 @@ static char *device_name_get(void)
     }
 
     return name;
+}
+
+/* Bookkeeping functions */
+static void uptime_publish(void)
+{
+    char topic[MAX_TOPIC_LEN];
+    char buf[16];
+
+    /* Only publish uptime when connected, we don't want it to be queued */
+    if (!mqtt_is_connected())
+        return;
+
+    /* Uptime (in seconds) */
+    sprintf(buf, "%lld", esp_timer_get_time() / 1000 / 1000);
+    snprintf(topic, MAX_TOPIC_LEN, "%s/Uptime", device_name_get());
+    mqtt_publish(topic, (uint8_t *)buf, strlen(buf), config_mqtt_qos_get(),
+        config_mqtt_retained_get());
+}
+
+static void self_publish(void)
+{
+    char topic[MAX_TOPIC_LEN];
+    char *payload;
+
+    /* App version */
+    payload = BLE2MQTT_VER;
+    snprintf(topic, MAX_TOPIC_LEN, "%s/Version", device_name_get());
+    mqtt_publish(topic, (uint8_t *)payload, strlen(payload),
+        config_mqtt_qos_get(), config_mqtt_retained_get());
+
+    /* Config version */
+    payload = config_version_get();
+    snprintf(topic, MAX_TOPIC_LEN, "%s/ConfigVersion", device_name_get());
+    mqtt_publish(topic, (uint8_t *)payload, strlen(payload),
+        config_mqtt_qos_get(), config_mqtt_retained_get());
+
+    uptime_publish();
 }
 
 /* OTA functions */
@@ -135,6 +173,7 @@ static void wifi_on_disconnected(void)
 static void mqtt_on_connected(void)
 {
     ESP_LOGI(TAG, "Connected to MQTT, scanning for BLE devices");
+    self_publish();
     ota_subscribe();
     ble_scan_start();
 }
@@ -393,6 +432,7 @@ static uint32_t ble_on_passkey_requested(mac_addr_t mac)
 
 /* BLE2MQTT Task and event callbacks */
 typedef enum {
+    EVENT_TYPE_HEARTBEAT_TIMER,
     EVENT_TYPE_OTA_COMPLETED,
     EVENT_TYPE_WIFI_CONNECTED,
     EVENT_TYPE_WIFI_DISCONNECTED,
@@ -448,6 +488,9 @@ static void ble2mqtt_handle_event(event_t *event)
 {
     switch (event->type)
     {
+    case EVENT_TYPE_HEARTBEAT_TIMER:
+        uptime_publish();
+        break;
     case EVENT_TYPE_OTA_COMPLETED:
         ota_on_completed(event->ota_completed.type, event->ota_completed.err);
         break;
@@ -513,8 +556,19 @@ static void ble2mqtt_task(void *pvParameter)
     vTaskDelete(NULL);
 }
 
+static void heartbeat_timer_cb(TimerHandle_t xTimer)
+{
+    event_t *event = malloc(sizeof(*event));
+
+    event->type = EVENT_TYPE_HEARTBEAT_TIMER;
+
+    xQueueSend(event_queue, &event, portMAX_DELAY);
+}
+
 static int start_ble2mqtt_task(void)
 {
+    TimerHandle_t hb_timer;
+
     if (!(event_queue = xQueueCreate(10, sizeof(event_t *))))
         return -1;
 
@@ -523,6 +577,11 @@ static int start_ble2mqtt_task(void)
     {
         return -1;
     }
+
+
+    hb_timer = xTimerCreate("heartbeat", pdMS_TO_TICKS(60 * 1000), pdTRUE,
+        NULL, heartbeat_timer_cb);
+    xTimerStart(hb_timer, 0);
 
     return 0;
 }

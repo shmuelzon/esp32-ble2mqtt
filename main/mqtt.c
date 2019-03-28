@@ -283,6 +283,11 @@ int mqtt_disconnect(void)
     return 0;
 }
 
+uint8_t mqtt_is_connected(void)
+{
+    return is_connected;
+}
+
 int mqtt_initialize(void)
 {
     ESP_LOGD(TAG, "Initializing MQTT client");

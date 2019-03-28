@@ -26,6 +26,8 @@ int mqtt_connect(const char *host, uint16_t port, const char *client_id,
     const char *username, const char *password);
 int mqtt_disconnect(void);
 
+uint8_t mqtt_is_connected(void);
+
 int mqtt_initialize(void);
 
 #endif
