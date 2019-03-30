@@ -56,6 +56,12 @@ static void uptime_publish(void)
     snprintf(topic, MAX_TOPIC_LEN, "%s/Uptime", device_name_get());
     mqtt_publish(topic, (uint8_t *)buf, strlen(buf), config_mqtt_qos_get(),
         config_mqtt_retained_get());
+
+    /* Free memory (in bytes) */
+    sprintf(buf, "%u", esp_get_free_heap_size());
+    snprintf(topic, MAX_TOPIC_LEN, "%s/FreeMemory", device_name_get());
+    mqtt_publish(topic, (uint8_t *)buf, strlen(buf), config_mqtt_qos_get(),
+        config_mqtt_retained_get());
 }
 
 static void self_publish(void)
