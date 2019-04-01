@@ -1,6 +1,3 @@
-[submodule "components/espmqtt"]
-	path = components/espmqtt
-	url = https://github.com/espressif/espmqtt.git
 [submodule "mkspiffs"]
 	path = mkspiffs
 	url = https://github.com/igrr/mkspiffs.git
