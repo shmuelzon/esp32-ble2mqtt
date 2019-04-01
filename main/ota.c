@@ -1,7 +1,7 @@
 #include "ota.h"
 #include "config.h"
 #include <stddef.h>
-#include <esp_request.h>
+#include <esp_http_client.h>
 #include <esp_err.h>
 #include <esp_log.h>
 #include <esp_ota_ops.h>
@@ -173,46 +173,57 @@ static ota_ops_t ota_firmware_ops = {
     .version_get = ota_firmware_version_get,
 };
 
-static int download_callback(request_t *req, char *data, int len)
+static int http_event_cb(esp_http_client_event_t *event)
 {
+    if (event->event_id != HTTP_EVENT_ON_DATA)
+        return ESP_OK;
+
     if (!ota_ctx.bytes_written)
     {
         if (ota_ctx.ops->begin(&ota_ctx.handle))
-            return OTA_ERR_FAILED_BEGIN;
+            return ESP_FAIL;
     }
 
-    if (ota_ctx.ops->write(ota_ctx.handle, (uint8_t *)data, len))
+    if (ota_ctx.ops->write(ota_ctx.handle, event->data, event->data_len))
     {
         ESP_LOGE(TAG, "Failed writing data");
-        return OTA_ERR_FAILED_WRITE;
+        return ESP_FAIL;
     }
-    ota_ctx.bytes_written += len;
-    ESP_LOGI(TAG, "Wrote %d bytes (total: %d)", len, ota_ctx.bytes_written);
+    ota_ctx.bytes_written += event->data_len;
+    ESP_LOGI(TAG, "Wrote %d bytes (total: %d)", event->data_len,
+        ota_ctx.bytes_written);
 
-    return 0;
+    return ESP_OK;
 }
 
 static void ota_task(void *pvParameter)
 {
-    request_t *req;
+    esp_http_client_handle_t handle;
     char header[128];
-    int http_status = 200;
+    int http_status = -1;
     ota_err_t err = OTA_ERR_FAILED_DOWNLOAD;
+    esp_http_client_config_t config = {
+        .event_handler = http_event_cb,
+        .method = HTTP_METHOD_GET,
+        .url = ota_ctx.url,
+        .buffer_size = 2048,
+    };
 
     ESP_LOGI(TAG, "Starting OTA from %s", ota_ctx.url);
-    req = req_new(ota_ctx.url);
+    handle = esp_http_client_init(&config);
 
     /* Set HTTP headers */
-    req_setopt(req, REQ_FUNC_DOWNLOAD_CB, download_callback);
-    sprintf(header, "User-Agent: BLE2MQTT/%s", BLE2MQTT_VER);
-    req_setopt(req, REQ_SET_HEADER, header);
-    sprintf(header, "If-None-Match: \"%s\"", ota_ctx.ops->version_get());
-    req_setopt(req, REQ_SET_HEADER, header);
+    sprintf(header, "BLE2MQTT/%s", BLE2MQTT_VER);
+    esp_http_client_set_header(handle, "User-Agent", header);
+    sprintf(header, "\"%s\"", ota_ctx.ops->version_get());
+    esp_http_client_set_header(handle, "If-None-Match", header);
 
     /* Start HTTP request */
-    http_status = req_perform(req);
+    if (esp_http_client_perform(handle) == ESP_OK)
+        http_status = esp_http_client_get_status_code(handle);
+
     ESP_LOGI(TAG, "HTTP request response: %d, read %d (%d) bytes", http_status,
-        req->buffer->bytes_total, ota_ctx.bytes_written);
+        esp_http_client_get_content_length(handle), ota_ctx.bytes_written);
 
     /* Call ops->end() only if we actually downloaded something */
     if (http_status == 200 && ota_ctx.bytes_written > 0)
@@ -228,7 +239,7 @@ static void ota_task(void *pvParameter)
 
     free(ota_ctx.url);
     ota_ctx.url = NULL;
-    req_clean(req);
+    esp_http_client_cleanup(handle);
     vTaskDelete(NULL);
 }
 
