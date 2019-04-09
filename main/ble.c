@@ -58,6 +58,7 @@ static uint8_t scan_requested = 0;
 static esp_gatt_if_t g_gattc_if = ESP_GATT_IF_NONE;
 static ble_device_t *devices_list = NULL;
 static ble_operation_t *operation_queue = NULL;
+static TimerHandle_t purge_device_list_timer = NULL;
 
 /* Callback functions */
 static ble_on_broadcaster_discovered_cb_t on_broadcaster_discovered_cb = NULL;
@@ -567,7 +568,7 @@ static void gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 
         /* Cache device information */
         ble_device_add(&devices_list, param->scan_rst.bda,
-            param->scan_rst.ble_addr_type, -1);
+            param->scan_rst.ble_addr_type, 0xffff);
 
         /* Notify app only on newly connected devices */
         if(on_device_discovered_cb)
@@ -778,6 +779,12 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
         ble_operation_dequeue(&operation_queue);
 }
 
+static void ble_purge_device_list_timer_cb(TimerHandle_t xTimer)
+{
+    ESP_LOGD(TAG, "Purging non-connected devices");
+    ble_device_remove_disconnected(&devices_list);
+}
+
 int ble_initialize(void)
 {
     ESP_LOGD(TAG, "Initializing BLE client");
@@ -798,6 +805,15 @@ int ble_initialize(void)
     esp_ble_io_cap_t iocap = ESP_IO_CAP_IN;
     esp_ble_gap_set_security_param(ESP_BLE_SM_IOCAP_MODE, &iocap,
         sizeof(iocap));
+
+    if (!(purge_device_list_timer = xTimerCreate("purge_device_list_timer",
+        pdMS_TO_TICKS(60 * 60 * 1000), pdTRUE, NULL,
+        ble_purge_device_list_timer_cb)))
+    {
+        return -1;
+    }
+
+    xTimerStart(purge_device_list_timer, 0);
 
     return 0;
 }

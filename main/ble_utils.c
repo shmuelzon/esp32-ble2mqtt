@@ -729,6 +729,23 @@ void ble_device_remove_by_conn_id(ble_device_t **list, uint16_t conn_id)
     ble_device_free(tmp);
 }
 
+void ble_device_remove_disconnected(ble_device_t **list)
+{
+    ble_device_t *tmp, **cur = list;
+
+    while (*cur)
+    {
+        if ((*cur)->conn_id == 0xffff)
+        {
+            tmp = *cur;
+            *cur = (*cur)->next;
+            ble_device_free(tmp);
+        }
+        else
+            cur = &(*cur)->next;
+    }
+}
+
 void ble_device_free(ble_device_t *dev)
 {
     ble_device_services_free(&dev->services);

@@ -58,6 +58,7 @@ ble_device_t *ble_device_find_by_conn_id(ble_device_t *list, uint16_t conn_id);
 void ble_device_foreach(ble_device_t *list, ble_on_device_cb_t cb);
 void ble_device_remove_by_mac(ble_device_t **list, mac_addr_t mac);
 void ble_device_remove_by_conn_id(ble_device_t **list, uint16_t conn_id);
+void ble_device_remove_disconnected(ble_device_t **list);
 void ble_device_free(ble_device_t *device);
 void ble_devices_free(ble_device_t **list);
 
