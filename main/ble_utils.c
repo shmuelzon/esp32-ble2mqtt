@@ -231,6 +231,52 @@ static characteristic_type_t *ble_get_characteristic_types(ble_uuid_t uuid)
     return ret;
 }
 
+static size_t ble_type_size(characteristic_type_t type)
+{
+    switch (type)
+    {
+    case CHAR_TYPE_BOOLEAN:
+    case CHAR_TYPE_2BIT:
+    case CHAR_TYPE_4BIT:
+    case CHAR_TYPE_NIBBLE:
+    case CHAR_TYPE_8BIT:
+    case CHAR_TYPE_UINT8:
+    case CHAR_TYPE_SINT8:
+        return 1;
+    case CHAR_TYPE_UINT12:
+    case CHAR_TYPE_16BIT:
+    case CHAR_TYPE_UINT16:
+    case CHAR_TYPE_SINT16:
+    case CHAR_TYPE_SFLOAT:
+        return 2;
+    case CHAR_TYPE_24BIT:
+    case CHAR_TYPE_UINT24:
+    case CHAR_TYPE_SINT24:
+        return 3;
+    case CHAR_TYPE_32BIT:
+    case CHAR_TYPE_UINT32:
+    case CHAR_TYPE_SINT32:
+    case CHAR_TYPE_FLOAT:
+        return 4;
+    case CHAR_TYPE_UINT40:
+        return 5;
+    case CHAR_TYPE_UINT48:
+        return 6;
+    case CHAR_TYPE_FLOAT64:
+        return 8;
+    case CHAR_TYPE_UTF8S:
+        /* String length are whatever is left in the payload, fall-through */
+    case CHAR_TYPE_UINT128:
+    case CHAR_TYPE_REG_CERT_DATA_LIST:
+    case CHAR_TYPE_VARIABLE:
+    case CHAR_TYPE_GATT_UUID:
+    case CHAR_TYPE_UNKNOWN:
+        return 0;
+    }
+
+    return 0;
+}
+
 char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
 {
     characteristic_type_t *types = ble_get_characteristic_types(uuid);
@@ -247,20 +293,22 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
      */
     for (; types && *types != -1; types++)
     {
+        size_t type_len = ble_type_size(*types);
+
+        if (len - i < type_len)
+            break;
+
         switch (*types)
         {
         case CHAR_TYPE_BOOLEAN:
             p += sprintf(p, "%s,", data[i] & 0x01 ? "true" : "false");
-            i += 1;
             break;
         case CHAR_TYPE_2BIT:
             p += sprintf(p, "%hhu,", data[i] & 0x03);
-            i += 1;
             break;
         case CHAR_TYPE_4BIT:
         case CHAR_TYPE_NIBBLE:
             p += sprintf(p, "%hhu,", data[i] & 0x0F);
-            i += 1;
             break;
         case CHAR_TYPE_8BIT:
         case CHAR_TYPE_UINT8:
@@ -269,14 +317,13 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
                 p += sprintf(p, "%hhd,", data[i]);
             else
                 p += sprintf(p, "%hhu,", data[i]);
-            i += 1;
+
             break;
         case CHAR_TYPE_UINT12:
         {
             uint16_t tmp = (data[i + 1] << 8) | data[i];
 
             p += sprintf(p, "%hu,", tmp & 0x0FFF);
-            i += 2;
             break;
         }
         case CHAR_TYPE_16BIT:
@@ -290,7 +337,6 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
             else
                 p += sprintf(p, "%hu,", tmp);
 
-            i += 2;
             break;
         }
         case CHAR_TYPE_24BIT:
@@ -304,7 +350,6 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
             else
                 p += sprintf(p, "%u,", tmp);
 
-            i += 3;
             break;
         }
         case CHAR_TYPE_32BIT:
@@ -319,7 +364,6 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
             else
                 p += sprintf(p, "%u,", tmp);
 
-            i += 4;
             break;
         }
         case CHAR_TYPE_UINT40:
@@ -329,7 +373,6 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
 
             p += sprintf(p, "%llu,", tmp);
 
-            i += 5;
             break;
         }
         case CHAR_TYPE_UINT48:
@@ -340,7 +383,6 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
 
             p += sprintf(p, "%llu,", tmp);
 
-            i += 6;
             break;
         }
         /* String values consume the rest of the buffer */
@@ -366,8 +408,6 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
             memcpy(&tmp.b, &data[i], 8);
 
             p += sprintf(p, "%f,", tmp.d);
-
-            i += 8;
             break;
         }
         /* IEEE-11073 floating point format */
@@ -384,8 +424,6 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
                 mantissa = -((0x0FFF + 1) - mantissa);
 
             p += sprintf(p, "%f,", mantissa * pow(10.0f, exponent));
-
-            i += 2;
             break;
         }
         case CHAR_TYPE_FLOAT:
@@ -399,8 +437,6 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
                 mantissa = -((0xFFFFFF + 1) - mantissa);
 
             p += sprintf(p, "%f,", mantissa * pow(10.0f, exponent));
-
-            i += 4;
             break;
         }
         case CHAR_TYPE_UINT128:
@@ -410,6 +446,8 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
         case CHAR_TYPE_UNKNOWN:
             printf(">>>> Unhandled characteristic type %d <<<<\n", *types);
         }
+
+        i += type_len;
     }
 
     for (; i < len; i++)
