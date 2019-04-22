@@ -326,7 +326,7 @@ static void ble_on_characteristic_removed(mac_addr_t mac, ble_uuid_t service_uui
     if (properties & CHAR_PROP_WRITE)
         mqtt_unsubscribe(ble_topic_suffix(topic, 0));
 
-    if (properties & CHAR_PROP_NOTIFY)
+    if (properties & (CHAR_PROP_NOTIFY | CHAR_PROP_INDICATE))
     {
         ble_characteristic_notify_unregister(mac, service_uuid,
             characteristic_uuid);
@@ -398,8 +398,8 @@ static void ble_on_characteristic_found(mac_addr_t mac, ble_uuid_t service_uuid,
             characteristic_uuid), free);
     }
 
-    /* Characteristic can notify on changes */
-    if (properties & CHAR_PROP_NOTIFY)
+    /* Characteristic can notify / indicate on changes */
+    if (properties & (CHAR_PROP_NOTIFY | CHAR_PROP_INDICATE))
     {
         ble_characteristic_notify_register(mac, service_uuid,
             characteristic_uuid);

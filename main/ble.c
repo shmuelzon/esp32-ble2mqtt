@@ -10,6 +10,7 @@
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/timers.h>
+#include <endian.h>
 #include <string.h>
 
 /* Constants */
@@ -452,7 +453,7 @@ int ble_characteristic_write(mac_addr_t mac, ble_uuid_t service_uuid,
 int ble_characteristic_notify_register(mac_addr_t mac, ble_uuid_t service_uuid,
     ble_uuid_t characteristic_uuid)
 {
-    uint16_t notify_en = 1;
+    uint16_t enable = htole16(0x1);
     ble_device_t *device;
     ble_service_t *service;
     ble_characteristic_t *characteristic;
@@ -469,11 +470,14 @@ int ble_characteristic_notify_register(mac_addr_t mac, ble_uuid_t service_uuid,
         return -1;
     }
 
-    if (!(characteristic->properties & CHAR_PROP_NOTIFY))
+    if (!(characteristic->properties & (CHAR_PROP_NOTIFY | CHAR_PROP_INDICATE)))
         return -1;
 
     if (characteristic->client_config_handle == 0)
         return -1;
+
+    if (characteristic->properties | CHAR_PROP_INDICATE)
+        enable = htole16(0x2);
 
     if (esp_ble_gattc_register_for_notify(g_gattc_if, device->mac,
         characteristic->handle))
@@ -482,7 +486,7 @@ int ble_characteristic_notify_register(mac_addr_t mac, ble_uuid_t service_uuid,
     }
 
     ble_operation_enqueue(&operation_queue, BLE_OPERATION_TYPE_WRITE_CHAR,
-        device, characteristic, sizeof(notify_en), (uint8_t *)&notify_en);
+        device, characteristic, sizeof(enable), (uint8_t *)&enable);
 
     return 0;
 }
