@@ -371,6 +371,7 @@ static void ble_on_characteristic_found(mac_addr_t mac, ble_uuid_t service_uuid,
     ESP_LOGD(TAG, "Found new characteristic!");
     ESP_LOGD(TAG, "  Service: %s", uuidtoa(service_uuid));
     ESP_LOGD(TAG, "  Characteristic: %s", uuidtoa(characteristic_uuid));
+    ESP_LOGD(TAG, "  Properties: 0x%x", properties);
     char *topic;
 
     if (!config_ble_service_should_include(uuidtoa(service_uuid)) ||
@@ -568,6 +569,7 @@ static void heartbeat_timer_cb(TimerHandle_t xTimer)
 
     event->type = EVENT_TYPE_HEARTBEAT_TIMER;
 
+    ESP_LOGD(TAG, "Queuing event HEARTBEAT_TIMER");
     xQueueSend(event_queue, &event, portMAX_DELAY);
 }
 
@@ -600,6 +602,7 @@ static void _ota_on_completed(ota_type_t type, ota_err_t err)
     event->ota_completed.type = type;
     event->ota_completed.err = err;
 
+    ESP_LOGD(TAG, "Queuing event HEARTBEAT_TIMER (%d, %d)", type, err);
     xQueueSend(event_queue, &event, portMAX_DELAY);
 }
 
@@ -609,6 +612,7 @@ static void _wifi_on_connected(void)
 
     event->type = EVENT_TYPE_WIFI_CONNECTED;
 
+    ESP_LOGD(TAG, "Queuing event WIFI_CONNECTED");
     xQueueSend(event_queue, &event, portMAX_DELAY);
 }
 
@@ -618,6 +622,7 @@ static void _wifi_on_disconnected(void)
 
     event->type = EVENT_TYPE_WIFI_DISCONNECTED;
 
+    ESP_LOGD(TAG, "Queuing event WIFI_DISCONNECTED");
     xQueueSend(event_queue, &event, portMAX_DELAY);
 }
 
@@ -627,6 +632,7 @@ static void _mqtt_on_connected(void)
 
     event->type = EVENT_TYPE_MQTT_CONNECTED;
 
+    ESP_LOGD(TAG, "Queuing event MQTT_CONNECTED");
     xQueueSend(event_queue, &event, portMAX_DELAY);
 }
 
@@ -636,6 +642,7 @@ static void _mqtt_on_disconnected(void)
 
     event->type = EVENT_TYPE_MQTT_DISCONNECTED;
 
+    ESP_LOGD(TAG, "Queuing event MQTT_DISCONNECTED");
     xQueueSend(event_queue, &event, portMAX_DELAY);
 }
 
@@ -652,6 +659,8 @@ static void _ble_on_broadcaster_discovered(mac_addr_t mac, uint8_t *adv_data,
     event->ble_broadcaster_discovered.rssi = rssi;
     event->ble_broadcaster_discovered.ops = ops;
 
+    ESP_LOGD(TAG, "Queuing event BLE_BROADCASTER_DISCOVERED (%s, %p, %u, %d)",
+        mactoa(mac), adv_data, adv_data_len, rssi);
     xQueueSend(event_queue, &event, portMAX_DELAY);
 }
 
@@ -662,6 +671,7 @@ static void _ble_on_device_discovered(mac_addr_t mac)
     event->type = EVENT_TYPE_BLE_DEVICE_DISCOVERED;
     memcpy(event->ble_device_discovered.mac, mac, sizeof(mac_addr_t));
 
+    ESP_LOGD(TAG, "Queuing event BLE_DEVICE_DISCOVERED (%s)", mactoa(mac));
     xQueueSend(event_queue, &event, portMAX_DELAY);
 }
 
@@ -672,6 +682,7 @@ static void _ble_on_device_connected(mac_addr_t mac)
     event->type = EVENT_TYPE_BLE_DEVICE_CONNECTED;
     memcpy(event->ble_device_connected.mac, mac, sizeof(mac_addr_t));
 
+    ESP_LOGD(TAG, "Queuing event BLE_DEVICE_CONNECTED (%s)", mactoa(mac));
     xQueueSend(event_queue, &event, portMAX_DELAY);
 }
 
@@ -682,6 +693,7 @@ static void _ble_on_device_disconnected(mac_addr_t mac)
     event->type = EVENT_TYPE_BLE_DEVICE_DISCONNECTED;
     memcpy(event->ble_device_disconnected.mac, mac, sizeof(mac_addr_t));
 
+    ESP_LOGD(TAG, "Queuing event BLE_DEVICE_DISCONNECTED (%s)", mactoa(mac));
     xQueueSend(event_queue, &event, portMAX_DELAY);
 }
 
@@ -692,6 +704,8 @@ static void _ble_on_device_services_discovered(mac_addr_t mac)
     event->type = EVENT_TYPE_BLE_DEVICE_SERVICES_DISCOVERED;
     memcpy(event->ble_device_services_discovered.mac, mac, sizeof(mac_addr_t));
 
+    ESP_LOGD(TAG, "Queuing event BLE_DEVICE_SERVICES_DISCOVERED (%s)",
+        mactoa(mac));
     xQueueSend(event_queue, &event, portMAX_DELAY);
 }
 
@@ -711,6 +725,8 @@ static void _ble_on_device_characteristic_value(mac_addr_t mac,
     memcpy(event->ble_device_characteristic_value.value, value, value_len);
     event->ble_device_characteristic_value.value_len = value_len;
 
+    ESP_LOGD(TAG, "Queuing event BLE_DEVICE_CHARACTERISTIC_VALUE (%s, %s, %p, "
+        "%u)", mactoa(mac), uuidtoa(characteristic), value, value_len);
     xQueueSend(event_queue, &event, portMAX_DELAY);
 }
 

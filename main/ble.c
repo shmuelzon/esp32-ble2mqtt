@@ -482,6 +482,8 @@ int ble_characteristic_notify_register(mac_addr_t mac, ble_uuid_t service_uuid,
     if (esp_ble_gattc_register_for_notify(g_gattc_if, device->mac,
         characteristic->handle))
     {
+        ESP_LOGE(TAG, "Failed registring for notification for char %s",
+            uuidtoa(characteristic_uuid));
         return -1;
     }
 
