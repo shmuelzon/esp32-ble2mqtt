@@ -4,6 +4,18 @@
 #include <esp_gap_ble_api.h>
 #include <esp_gattc_api.h>
 
+#define MAC_FMT "%02x:%02x:%02x:%02x:%02x:%02x"
+#define MAC_PARAM(mac) mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]
+
+#define UUID_FMT \
+    "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x"
+#define UUID_PARAM(uuid) \
+    uuid[15], uuid[14], uuid[13], uuid[12], \
+    uuid[11], uuid[10], \
+    uuid[9], uuid[8], \
+    uuid[7], uuid[6], \
+    uuid[5], uuid[4], uuid[3], uuid[2], uuid[1], uuid[0]
+
 /* Types */
 typedef uint8_t mac_addr_t[6];
 typedef uint8_t ble_uuid_t[16];

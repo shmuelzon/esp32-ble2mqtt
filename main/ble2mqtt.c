@@ -210,8 +210,8 @@ static void ble_publish_connected(mac_addr_t mac, uint8_t is_connected)
 {
     char topic[MAX_TOPIC_LEN];
 
-    snprintf(topic, MAX_TOPIC_LEN, "%s%s/Connected", config_mqtt_prefix_get(),
-        mactoa(mac));
+    snprintf(topic, MAX_TOPIC_LEN, "%s" MAC_FMT "/Connected",
+        config_mqtt_prefix_get(), MAC_PARAM(mac));
 
     if (!is_connected)
         mqtt_unsubscribe(topic);
@@ -226,8 +226,8 @@ static void ble_publish_connected(mac_addr_t mac, uint8_t is_connected)
         mqtt_subscribe(topic, config_mqtt_qos_get(), ble_on_mqtt_connected_cb,
             strdup(mactoa(mac)), free);
         /* We are now the owner of this device */
-        snprintf(topic, MAX_TOPIC_LEN, "%s%s/Owner", config_mqtt_prefix_get(),
-            mactoa(mac));
+        snprintf(topic, MAX_TOPIC_LEN, "%s" MAC_FMT "/Owner",
+            config_mqtt_prefix_get(), MAC_PARAM(mac));
         mqtt_publish(topic, (uint8_t *)device_name_get(), 14,
             config_mqtt_qos_get(), config_mqtt_retained_get());
     }
@@ -275,8 +275,8 @@ static void ble_on_device_discovered(mac_addr_t mac)
 {
     uint8_t connect = config_ble_should_connect(mactoa(mac));
 
-    ESP_LOGI(TAG, "Discovered BLE device: %s, %sconnecting", mactoa(mac),
-        connect ? "" : "not ");
+    ESP_LOGI(TAG, "Discovered BLE device: " MAC_FMT ", %sconnecting",
+        MAC_PARAM(mac), connect ? "" : "not ");
 
     if (!connect)
         return;
@@ -286,7 +286,8 @@ static void ble_on_device_discovered(mac_addr_t mac)
 
 static void ble_on_device_connected(mac_addr_t mac)
 {
-    ESP_LOGI(TAG, "Connected to device: %s, scanning", mactoa(mac));
+    ESP_LOGI(TAG, "Connected to device: " MAC_FMT ", scanning",
+        MAC_PARAM(mac));
     ble_publish_connected(mac, 1);
     ble_services_scan(mac);
 }
@@ -307,8 +308,9 @@ static char *ble_topic(mac_addr_t mac, ble_uuid_t service_uuid,
     static char topic[MAX_TOPIC_LEN];
     int i;
 
-    i = snprintf(topic, MAX_TOPIC_LEN, "%s%s/%s", config_mqtt_prefix_get(),
-        mactoa(mac), ble_service_name_get(service_uuid));
+    i = snprintf(topic, MAX_TOPIC_LEN, "%s" MAC_FMT "/%s",
+        config_mqtt_prefix_get(), MAC_PARAM(mac),
+        ble_service_name_get(service_uuid));
     snprintf(topic + i, MAX_TOPIC_LEN - i, "/%s",
         ble_characteristic_name_get(characteristic_uuid));
 
@@ -335,7 +337,7 @@ static void ble_on_characteristic_removed(mac_addr_t mac, ble_uuid_t service_uui
 
 static void ble_on_device_disconnected(mac_addr_t mac)
 {
-    ESP_LOGI(TAG, "Disconnected from device: %s", mactoa(mac));
+    ESP_LOGI(TAG, "Disconnected from device: " MAC_FMT, MAC_PARAM(mac));
     ble_publish_connected(mac, 0);
     ble_foreach_characteristic(mac, ble_on_characteristic_removed);
 }
@@ -368,10 +370,9 @@ static void ble_on_mqtt_set(const char *topic, const uint8_t *payload,
 static void ble_on_characteristic_found(mac_addr_t mac, ble_uuid_t service_uuid,
     ble_uuid_t characteristic_uuid, uint8_t properties)
 {
-    ESP_LOGD(TAG, "Found new characteristic!");
-    ESP_LOGD(TAG, "  Service: %s", uuidtoa(service_uuid));
-    ESP_LOGD(TAG, "  Characteristic: %s", uuidtoa(characteristic_uuid));
-    ESP_LOGD(TAG, "  Properties: 0x%x", properties);
+    ESP_LOGD(TAG, "Found new characteristic: service: " UUID_FMT
+      ", characteristic: " UUID_FMT ", properties: 0x%x",
+      UUID_PARAM(service_uuid), UUID_PARAM(characteristic_uuid), properties);
     char *topic;
 
     if (!config_ble_service_should_include(uuidtoa(service_uuid)) ||
@@ -409,7 +410,7 @@ static void ble_on_characteristic_found(mac_addr_t mac, ble_uuid_t service_uuid,
 
 static void ble_on_device_services_discovered(mac_addr_t mac)
 {
-    ESP_LOGD(TAG, "Services discovered on device: %s", mactoa(mac));
+    ESP_LOGD(TAG, "Services discovered on device: " MAC_FMT, MAC_PARAM(mac));
     ble_foreach_characteristic(mac, ble_on_characteristic_found);
 }
 
@@ -659,8 +660,8 @@ static void _ble_on_broadcaster_discovered(mac_addr_t mac, uint8_t *adv_data,
     event->ble_broadcaster_discovered.rssi = rssi;
     event->ble_broadcaster_discovered.ops = ops;
 
-    ESP_LOGD(TAG, "Queuing event BLE_BROADCASTER_DISCOVERED (%s, %p, %u, %d)",
-        mactoa(mac), adv_data, adv_data_len, rssi);
+    ESP_LOGD(TAG, "Queuing event BLE_BROADCASTER_DISCOVERED (" MAC_FMT ", "
+        "%p, %u, %d)", MAC_PARAM(mac), adv_data, adv_data_len, rssi);
     xQueueSend(event_queue, &event, portMAX_DELAY);
 }
 
@@ -671,7 +672,8 @@ static void _ble_on_device_discovered(mac_addr_t mac)
     event->type = EVENT_TYPE_BLE_DEVICE_DISCOVERED;
     memcpy(event->ble_device_discovered.mac, mac, sizeof(mac_addr_t));
 
-    ESP_LOGD(TAG, "Queuing event BLE_DEVICE_DISCOVERED (%s)", mactoa(mac));
+    ESP_LOGD(TAG, "Queuing event BLE_DEVICE_DISCOVERED (" MAC_FMT ")",
+        MAC_PARAM(mac));
     xQueueSend(event_queue, &event, portMAX_DELAY);
 }
 
@@ -682,7 +684,8 @@ static void _ble_on_device_connected(mac_addr_t mac)
     event->type = EVENT_TYPE_BLE_DEVICE_CONNECTED;
     memcpy(event->ble_device_connected.mac, mac, sizeof(mac_addr_t));
 
-    ESP_LOGD(TAG, "Queuing event BLE_DEVICE_CONNECTED (%s)", mactoa(mac));
+    ESP_LOGD(TAG, "Queuing event BLE_DEVICE_CONNECTED (" MAC_FMT ")",
+        MAC_PARAM(mac));
     xQueueSend(event_queue, &event, portMAX_DELAY);
 }
 
@@ -693,7 +696,8 @@ static void _ble_on_device_disconnected(mac_addr_t mac)
     event->type = EVENT_TYPE_BLE_DEVICE_DISCONNECTED;
     memcpy(event->ble_device_disconnected.mac, mac, sizeof(mac_addr_t));
 
-    ESP_LOGD(TAG, "Queuing event BLE_DEVICE_DISCONNECTED (%s)", mactoa(mac));
+    ESP_LOGD(TAG, "Queuing event BLE_DEVICE_DISCONNECTED (" MAC_FMT ")",
+        MAC_PARAM(mac));
     xQueueSend(event_queue, &event, portMAX_DELAY);
 }
 
@@ -704,8 +708,8 @@ static void _ble_on_device_services_discovered(mac_addr_t mac)
     event->type = EVENT_TYPE_BLE_DEVICE_SERVICES_DISCOVERED;
     memcpy(event->ble_device_services_discovered.mac, mac, sizeof(mac_addr_t));
 
-    ESP_LOGD(TAG, "Queuing event BLE_DEVICE_SERVICES_DISCOVERED (%s)",
-        mactoa(mac));
+    ESP_LOGD(TAG, "Queuing event BLE_DEVICE_SERVICES_DISCOVERED (" MAC_FMT ")",
+        MAC_PARAM(mac));
     xQueueSend(event_queue, &event, portMAX_DELAY);
 }
 
@@ -725,8 +729,9 @@ static void _ble_on_device_characteristic_value(mac_addr_t mac,
     memcpy(event->ble_device_characteristic_value.value, value, value_len);
     event->ble_device_characteristic_value.value_len = value_len;
 
-    ESP_LOGD(TAG, "Queuing event BLE_DEVICE_CHARACTERISTIC_VALUE (%s, %s, %p, "
-        "%u)", mactoa(mac), uuidtoa(characteristic), value, value_len);
+    ESP_LOGD(TAG, "Queuing event BLE_DEVICE_CHARACTERISTIC_VALUE (" MAC_FMT ", "
+        UUID_FMT ", %p, %u)", MAC_PARAM(mac), UUID_PARAM(characteristic), value,
+        value_len);
     xQueueSend(event_queue, &event, portMAX_DELAY);
 }
 

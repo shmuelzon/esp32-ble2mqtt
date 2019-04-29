@@ -94,8 +94,7 @@ char *mactoa(mac_addr_t mac)
 {
     static char s[18];
 
-    sprintf(s, "%02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3],
-        mac[4], mac[5]);
+    sprintf(s, MAC_FMT, MAC_PARAM(mac));
 
     return s;
 }
@@ -110,13 +109,7 @@ char *uuidtoa(ble_uuid_t uuid)
 {
     static char s[37];
 
-    sprintf(s,
-        "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
-        uuid[15], uuid[14], uuid[13], uuid[12],
-        uuid[11], uuid[10],
-        uuid[9], uuid[8], 
-        uuid[7], uuid[6],
-        uuid[5], uuid[4], uuid[3], uuid[2], uuid[1], uuid[0]);
+    sprintf(s, UUID_FMT, UUID_PARAM(uuid));
 
     return s;
 }

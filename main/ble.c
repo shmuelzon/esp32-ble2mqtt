@@ -165,9 +165,9 @@ static void ble_operation_dequeue(ble_operation_t **queue)
         return;
 
     *queue = operation->next;
-    ESP_LOGD(TAG, "Dequeue: type: %d, device: %s, char: %s, len: %u, val: %p",
-        operation->type, mactoa(operation->device->mac),
-        uuidtoa(operation->characteristic->uuid), operation->len,
+    ESP_LOGD(TAG, "Dequeue: type: %d, device: " MAC_FMT ", char: " UUID_FMT ", "
+        "len: %u, val: %p", operation->type, MAC_PARAM(operation->device->mac),
+        UUID_PARAM(operation->characteristic->uuid), operation->len,
         operation->value);
     ble_operation_perform(operation);
 }
@@ -198,9 +198,9 @@ static void ble_operation_enqueue(ble_operation_t **queue,
     else
         operation->value = NULL;
 
-    ESP_LOGD(TAG, "Enqueue: type: %d, device: %s, char: %s, len: %u, val: %p",
-        operation->type, mactoa(operation->device->mac),
-        uuidtoa(operation->characteristic->uuid), operation->len,
+    ESP_LOGD(TAG, "Enqueue: type: %d, device: " MAC_FMT ", char: " UUID_FMT ", "
+        "len: %u, val: %p", operation->type, MAC_PARAM(operation->device->mac),
+        UUID_PARAM(operation->characteristic->uuid), operation->len,
         operation->value);
 
     for (iter = queue; *iter; iter = &(*iter)->next);
@@ -482,8 +482,8 @@ int ble_characteristic_notify_register(mac_addr_t mac, ble_uuid_t service_uuid,
     if (esp_ble_gattc_register_for_notify(g_gattc_if, device->mac,
         characteristic->handle))
     {
-        ESP_LOGE(TAG, "Failed registring for notification for char %s",
-            uuidtoa(characteristic_uuid));
+        ESP_LOGE(TAG, "Failed registring for notification for char " UUID_FMT,
+            UUID_PARAM(characteristic_uuid));
         return -1;
     }
 
