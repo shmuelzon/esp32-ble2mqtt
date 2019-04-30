@@ -11,10 +11,10 @@ except ImportError:
   import urllib2 as urlrequest
   from cookielib import CookieJar
 
-GATT_URL = 'https://www.bluetooth.com/specifications/gatt'
+BT_URL = 'https://www.bluetooth.com'
+GATT_URL = BT_URL + '/specifications/gatt'
 SERVICES_URL = GATT_URL + '/services';
 CHARACTERISTICS_URL = GATT_URL + '/characteristics'
-CHARACTERISTIC_URL = 'https://www.bluetooth.com/api/gatt/XmlFile?xmlFileName='
 
 services = {}
 characteristics = {}
@@ -23,8 +23,9 @@ cj = CookieJar()
 
 def build_gatt_regex(gatt_type):
   # Nasty, nasty regex to parse a service/characterisitc row in the HTML.
-  return r'<td[^>]*>[^<]*<a[^>]*>([^<]*)</a>[^<]*</td>[^<]*<td[^>]*>' \
-    '(org.bluetooth.' + gatt_type + '.[^<]*)</td>[^<]*<td[^>]*>([^<]*)<'
+  return r'<td[^>]*>[^<]*<a href="([^"]*)"[^>]*>([^<]*)</a>[^<]*</td>[^<]*' \
+    '<td[^>]*>(org.bluetooth.' + gatt_type + \
+    '.[^<]*)</td>[^<]*<td[^>]*>([^<]*)<'
 
 def build_sig_uuid(uuid):
   return '%08x-0000-1000-8000-00805f9b34fb' % (int(uuid, 16))
@@ -34,17 +35,25 @@ def parse_services(data):
 
   # Parse all services
   for service in re.findall(regex, data):
-    # service[0] = Name, service[1] = Type, service[2] = Assigned Number
-    uuid = build_sig_uuid(service[2])
+    # service[0] = URL, service[1] = Name, service[2] = Type, service[3] = UUID
+    uuid = build_sig_uuid(service[3])
     services[uuid] = {
-      'name': service[0].replace(' ', ''),
+      'name': service[1].replace(' ', ''),
     }
 
 def get_characteristics_types(uuid):
-  url = CHARACTERISTIC_URL + characteristics[uuid]['org'] + '.xml'
+  if characteristics[uuid]['url'][0] == '/':
+    url = BT_URL + characteristics[uuid]['url']
+  else:
+    url = characteristics[uuid]['url']
   opener = urlrequest.build_opener(urlrequest.HTTPCookieProcessor(cj))
-  data = opener.open(url).read().decode('utf-8')
-  print('Downloaded ' + characteristics[uuid]['org'])
+  opener.addheaders = [{ 'User-Agent', 'Mozilla/5.0' }]
+  try:
+    data = opener.open(url).read().decode('utf-8')
+    print('Downloaded ' + characteristics[uuid]['org'])
+  except Exception as e:
+    print('Failed downloading ' + characteristics[uuid]['org'])
+    return
 
   for char_type in re.findall(r'<Format>([^<]*)<\/Format>', data):
     enum_type = 'CHAR_TYPE_' + char_type.replace('-', '_').upper()
@@ -57,11 +66,12 @@ def parse_characteristics(data):
 
   # Parse all characteristics
   for char in re.findall(regex, data):
-    # char[0] = Name, char[1] = Type, char[2] = Assigned Number
-    uuid = build_sig_uuid(char[2])
+    # char[0] = URL, char[1] = Name, char[2] = Type, char[3] = UUID
+    uuid = build_sig_uuid(char[3])
     characteristics[uuid] = {
-      'name': char[0].replace(' ', ''),
-      'org': char[1],
+      'url': char[0],
+      'name': char[1].replace(' ', '').replace('&#8211;', '-'),
+      'org': char[2],
       'types': []
     }
 
@@ -73,6 +83,7 @@ def parse_characteristics(data):
 
 def get_list(url, parser):
   opener = urlrequest.build_opener(urlrequest.HTTPCookieProcessor(cj))
+  opener.addheaders = [{ 'User-Agent', 'Mozilla/5.0' }]
   data = opener.open(url).read().decode('utf-8')
   parser(data)
 
