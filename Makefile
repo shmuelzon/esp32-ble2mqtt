@@ -54,12 +54,12 @@ force-upload: $(OTA_FIRMWARE)
 	$(CONFIG_PYTHON) $(PROJECT_PATH)/ota.py -f $< \
 	  -v \"\" -t $(OTA_TARGET) -n Firmware
 
-upload-config: $(OTA_CONFIG)
+upload-config: $(OTA_CONFIG) validate_config
 	echo Uploading configuration $< to $(OTA_TARGET)
 	$(CONFIG_PYTHON) $(PROJECT_PATH)/ota.py -f $< \
 	  -v $(word 1, $(shell $(MD5) $<)) -t $(OTA_TARGET) -n Config
 
-force-upload-config: $(OTA_CONFIG)
+force-upload-config: $(OTA_CONFIG) validate_config
 	echo Uploading configuration $< to $(OTA_TARGET)
 	$(CONFIG_PYTHON) $(PROJECT_PATH)/ota.py -f $< \
 	  -v \"\" -t $(OTA_TARGET) -n Config
