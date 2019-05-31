@@ -190,7 +190,16 @@ uint16_t config_mqtt_port_get(void)
     if (cJSON_IsNumber(port))
         return port->valuedouble;
 
-    return 1883;
+    return 0;
+}
+
+uint8_t config_mqtt_ssl_get(void)
+{
+    cJSON *mqtt = cJSON_GetObjectItemCaseSensitive(config, "mqtt");
+    cJSON *server = cJSON_GetObjectItemCaseSensitive(mqtt, "server");
+    cJSON *ssl = cJSON_GetObjectItemCaseSensitive(server, "ssl");
+
+    return cJSON_IsTrue(ssl);
 }
 
 const char *config_mqtt_client_id_get(void)

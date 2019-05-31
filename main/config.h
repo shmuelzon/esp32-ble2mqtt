@@ -19,6 +19,7 @@ uint32_t config_ble_passkey_get(const char *mac);
 /* MQTT Configuration*/
 const char *config_mqtt_host_get(void);
 uint16_t config_mqtt_port_get(void);
+uint8_t config_mqtt_ssl_get(void);
 const char *config_mqtt_client_id_get(void);
 const char *config_mqtt_username_get(void);
 const char *config_mqtt_password_get(void);

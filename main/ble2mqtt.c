@@ -163,7 +163,7 @@ static void wifi_on_connected(void)
     ESP_LOGI(TAG, "Connected to WiFi, connecting to MQTT");
     mqtt_connect(config_mqtt_host_get(), config_mqtt_port_get(),
         config_mqtt_client_id_get(), config_mqtt_username_get(),
-        config_mqtt_password_get());
+        config_mqtt_password_get(), config_mqtt_ssl_get());
 }
 
 static void wifi_on_disconnected(void)

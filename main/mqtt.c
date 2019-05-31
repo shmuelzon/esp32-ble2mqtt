@@ -251,7 +251,7 @@ static esp_err_t mqtt_event_cb(esp_mqtt_event_handle_t event)
 }
 
 int mqtt_connect(const char *host, uint16_t port, const char *client_id,
-    const char *username, const char *password)
+    const char *username, const char *password, uint8_t ssl)
 {
     esp_mqtt_client_config_t config = {
         .event_handle = mqtt_event_cb,
@@ -260,6 +260,7 @@ int mqtt_connect(const char *host, uint16_t port, const char *client_id,
         .client_id = client_id,
         .username = username,
         .password = password,
+        .transport = ssl ? MQTT_TRANSPORT_OVER_SSL : MQTT_TRANSPORT_OVER_TCP,
     };
 
     ESP_LOGI(TAG, "Connecting MQTT client");

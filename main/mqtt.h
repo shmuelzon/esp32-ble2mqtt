@@ -23,7 +23,7 @@ int mqtt_publish(const char *topic, uint8_t *payload, size_t len, int qos,
     uint8_t retained);
 
 int mqtt_connect(const char *host, uint16_t port, const char *client_id,
-    const char *username, const char *password);
+    const char *username, const char *password, uint8_t ssl);
 int mqtt_disconnect(void);
 
 uint8_t mqtt_is_connected(void);

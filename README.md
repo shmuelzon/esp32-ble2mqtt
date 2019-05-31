@@ -107,6 +107,7 @@ The `mqtt` section below includes the following entries:
     "server": {
       "host": "192.168.1.1",
       "port": 1883,
+      "ssl": false,
       "username": null,
       "password": null,
       "client_id": null
