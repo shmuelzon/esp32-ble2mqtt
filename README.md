@@ -108,6 +108,9 @@ The `mqtt` section below includes the following entries:
       "host": "192.168.1.1",
       "port": 1883,
       "ssl": false,
+      "client_cert": null,
+      "client_key": null,
+      "server_cert": null,
       "username": null,
       "password": null,
       "client_id": null
@@ -125,6 +128,16 @@ The `mqtt` section below includes the following entries:
 }
 ```
 * `server` - MQTT connection parameters
+  * `host` - Host name or IP address of the MQTT broker
+  * `port` - TCP port of the MQTT broker. If not specificed will default to
+    1883 or 8883, depending on SSL configuration
+  * `client_cert`, `client_key`, `server_cert` - Full path names, including a
+    leading slash (/), of the certificate/key file (in PEM format) stored under
+    the data folder. For example, if a certificate file is placed at
+    `data/certs/my_cert.pem`, the value stored in the configuration should be
+    `/certs/my_cert.pem`
+  * `username`, `password` - MQTT login credentials
+  * `client_id` - The MQTT client ID
 * `publish` - Configuration for publishing topics
 * `topics`
   * `prefix` - Which prefix should be added to all MQTT value topics. OTA

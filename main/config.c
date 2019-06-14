@@ -18,6 +18,36 @@ static cJSON *config;
 /* Internal variables */
 static char config_version[33];
 
+/* Common utilities */
+static char *read_file(const char *path)
+{
+    int fd, len;
+    struct stat st;
+    char *buf, *p;
+
+    if (stat(path, &st))
+        return NULL;
+
+    if ((fd = open(path, O_RDONLY)) < 0)
+        return NULL;
+
+    if (!(buf = p = malloc(st.st_size + 1)))
+        return NULL;
+
+    while ((len = read(fd, p, 1024)) > 0)
+        p += len;
+    close(fd);
+
+    if (len < 0)
+    {
+        free(buf);
+        return NULL;
+    }
+
+    *p = '\0';
+    return buf;
+}
+
 /* BLE Configuration*/
 static cJSON *config_ble_get_name_by_uuid(uint8_t is_service,
     const char *uuid, const char *field_name)
@@ -202,6 +232,48 @@ uint8_t config_mqtt_ssl_get(void)
     return cJSON_IsTrue(ssl);
 }
 
+const char *config_mqtt_file_get(const char *field)
+{
+    const char *file = config_mqtt_server_get(field);
+    char buf[128];
+
+    if (!file)
+        return NULL;
+
+    snprintf(buf, sizeof(buf), "/spiffs%s", file);
+    return read_file(buf);
+}
+
+const char *config_mqtt_server_cert_get(void)
+{
+    static const char *cert;
+
+    if (!cert)
+        cert = config_mqtt_file_get("server_cert");
+
+    return cert;
+}
+
+const char *config_mqtt_client_cert_get(void)
+{
+    static const char *cert;
+
+    if (!cert)
+        cert = config_mqtt_file_get("client_cert");
+
+    return cert;
+}
+
+const char *config_mqtt_client_key_get(void)
+{
+    static const char *key;
+
+    if (!key)
+        key = config_mqtt_file_get("client_key");
+
+    return key;
+}
+
 const char *config_mqtt_client_id_get(void)
 {
     return config_mqtt_server_get("client_id");
@@ -349,35 +421,6 @@ int config_update_end(config_update_handle_t handle)
         return -1;
 
     return 0;
-}
-
-static char *read_file(const char *path)
-{
-    int fd, len;
-    struct stat st;
-    char *buf, *p;
-
-    if (stat(path, &st))
-        return NULL;
-
-    if ((fd = open(path, O_RDONLY)) < 0)
-        return NULL;
-
-    if (!(buf = p = malloc(st.st_size + 1)))
-        return NULL;
-
-    while ((len = read(fd, p, 1024)) > 0)
-        p += len;
-    close(fd);
-
-    if (len < 0)
-    {
-        free(buf);
-        return NULL;
-    }
-
-    *p = '\0';
-    return buf;
 }
 
 static cJSON *load_json(const char *path)
