@@ -25,7 +25,7 @@ clean_spiffs:
 $(MKSPIFFS):
 	echo $(shell make -C $(PROJECT_PATH)/mkspiffs)
 
-SPIFFS_PARTITION=$(shell grep "^storage" partitions.csv | sed 's/,//g')
+SPIFFS_PARTITION=$(shell grep "^fs_0" partitions.csv | sed 's/,//g')
 SPIFFS_OFFSET=$(word 4, $(SPIFFS_PARTITION))
 SPIFFS_SIZE=$(word 5, $(SPIFFS_PARTITION))
 
@@ -37,12 +37,12 @@ $(SPIFFS_IMAGE): $(PROJECT_PATH)/data $(MKSPIFFS) partitions.csv validate_config
 flash: $(SPIFFS_IMAGE)
 
 # Include SPIFFS offset + image in the flash command
-ESPTOOL_ALL_FLASH_ARGS += $(SPIFFS_OFFSET) $(SPIFFS_IMAGE)
+ESPTOOL_ALL_FLASH_ARGS += $(SPIFFS_OFFSET) $(SPIFFS_IMAGE) \
+  $$(($(SPIFFS_OFFSET) + $(SPIFFS_SIZE))) $(SPIFFS_IMAGE)
 
 OTA_TARGET ?= BLE2MQTT
 OTA_FIRMWARE := $(BUILD_DIR_BASE)/$(PROJECT_NAME).bin
-OTA_CONFIG := $(PROJECT_PATH)/data/config.json
-MD5 := $(if $(subst Darwin,,$(shell uname)),md5sum,md5 -r)
+OTA_CONFIG := $(SPIFFS_IMAGE)
 
 upload: $(OTA_FIRMWARE)
 	echo Uploading firmware $< to $(OTA_TARGET)
@@ -57,7 +57,7 @@ force-upload: $(OTA_FIRMWARE)
 upload-config: $(OTA_CONFIG) validate_config
 	echo Uploading configuration $< to $(OTA_TARGET)
 	$(CONFIG_PYTHON) $(PROJECT_PATH)/ota.py -f $< \
-	  -v $(word 1, $(shell $(MD5) $<)) -t $(OTA_TARGET) -n Config
+	  -v $(word 1, $(shell shasum -a 256 $<)) -t $(OTA_TARGET) -n Config
 
 force-upload-config: $(OTA_CONFIG) validate_config
 	echo Uploading configuration $< to $(OTA_TARGET)
@@ -67,7 +67,7 @@ force-upload-config: $(OTA_CONFIG) validate_config
 remote-monitor:
 	$(CONFIG_PYTHON) -u $(PROJECT_PATH)/remote_log.py
 
-validate_config: $(OTA_CONFIG)
+validate_config: $(PROJECT_PATH)/data/config.json
 	cat $< | $(CONFIG_PYTHON) -m json.tool > /dev/null 2>&1 || \
 	  (echo "Error: Invalid JSON in configuration file."; exit 1)
 

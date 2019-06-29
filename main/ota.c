@@ -57,17 +57,17 @@ char *ota_err_to_str(ota_err_t err)
 /* Config OTA Wrappers */
 static int ota_config_begin(void **handle)
 {
-    return config_update_begin((config_update_handle_t *)handle);
+    return config_update_begin((config_update_handle_t **)handle);
 }
 
 static int ota_config_write(void *handle, uint8_t *data, size_t len)
 {
-    return config_update_write((config_update_handle_t)handle, data, len);
+    return config_update_write((config_update_handle_t *)handle, data, len);
 }
 
 static int ota_config_end(void *handle)
 {
-    return config_update_end((config_update_handle_t)handle);
+    return config_update_end((config_update_handle_t *)handle);
 }
 
 static char *ota_config_version_get(void)

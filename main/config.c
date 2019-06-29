@@ -1,22 +1,32 @@
 #include "config.h"
-#include <mbedtls/md5.h>
 #include <esp_err.h>
 #include <esp_log.h>
+#include <esp_partition.h>
 #include <esp_spiffs.h>
+#include <nvs.h>
 #include <cJSON.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
+/* Types */
+typedef struct config_update_handle_t {
+    const esp_partition_t *partition;
+    uint8_t partition_id;
+    size_t bytes_written;
+} config_update_handle_t;
+
 /* Constants */
 static const char *TAG = "Config";
 static const char *config_file_name = "/spiffs/config.json";
-static const char *config_update_file_name = "/spiffs/config.json.update";
+static const char *nvs_namespace = "ble2mqtt_config";
+static const char *nvs_active_partition = "active_part";
 static cJSON *config;
 
 /* Internal variables */
-static char config_version[33];
+static char config_version[65];
+static nvs_handle nvs;
 
 /* Common utilities */
 static char *read_file(const char *path)
@@ -384,60 +394,96 @@ uint16_t config_log_port_get(void)
 }
 
 /* Configuration Update */
-int config_update_begin(config_update_handle_t *handle)
+static int config_active_partition_get(void)
 {
-    int fd;
+    uint8_t partition = 0;
 
-    if ((fd = open(config_update_file_name, O_WRONLY | O_CREAT | O_TRUNC)) < 0)
+    nvs_get_u8(nvs, nvs_active_partition, &partition);
+    return partition;
+}
+
+static int config_active_partition_set(uint8_t partition)
+{
+    ESP_LOGD(TAG, "Setting active partition to %u", partition);
+
+    if (nvs_set_u8(nvs, nvs_active_partition, partition) != ESP_OK ||
+        nvs_commit(nvs) != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed setting active partition to: %u", partition);
         return -1;
+    }
 
-    *handle = fd;
     return 0;
 }
 
-int config_update_write(config_update_handle_t handle, uint8_t *data,
+int config_update_begin(config_update_handle_t **handle)
+{
+    const esp_partition_t *partition;
+    char partition_name[5];
+    uint8_t partition_id = !config_active_partition_get();
+
+    sprintf(partition_name, "fs_%u", partition_id);
+    ESP_LOGI(TAG, "Writing to partition %s", partition_name);
+    partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA,
+        ESP_PARTITION_SUBTYPE_DATA_SPIFFS, partition_name);
+
+    if (!partition)
+    {
+        ESP_LOGE(TAG, "Failed finding SPIFFS partition");
+        return -1;
+    }
+
+    ESP_LOGI(TAG, "Writing partition type 0x%0x subtype 0x%0x (offset 0x%08x)",
+        partition->type, partition->subtype, partition->address);
+
+    /* Erase partition, needed before writing is allowed */
+    if (esp_partition_erase_range(partition, 0, partition->size))
+        return -1;
+
+    *handle = malloc(sizeof(**handle));
+    (*handle)->partition = partition;
+    (*handle)->partition_id = partition_id;
+    (*handle)->bytes_written = 0;
+
+    return 0;
+}
+
+int config_update_write(config_update_handle_t *handle, uint8_t *data,
     size_t len)
 {
-    return write(handle, data, len) < 0;
+    if (esp_partition_write(handle->partition, handle->bytes_written, data,
+        len))
+    {
+        ESP_LOGE(TAG, "Failed writing to SPIFFS partition!");
+        free(handle);
+        return -1;
+    }
+
+    handle->bytes_written += len;
+    return 0;
 }
 
-int config_update_end(config_update_handle_t handle)
+int config_update_end(config_update_handle_t *handle)
 {
-    struct stat st;
+    int ret = -1;
 
-    if (close(handle))
-        return -1;
+    /* We succeeded only if the entire partition was written */
+    if (handle->bytes_written == handle->partition->size)
+        ret = config_active_partition_set(handle->partition_id);
 
-    if (stat(config_update_file_name, &st))
-        return -1;
-
-    if (st.st_size == 0)
-        return -1;
-
-    if (unlink(config_file_name))
-        return -1;
-
-    if (rename(config_update_file_name, config_file_name))
-        return -1;
-
-    return 0;
+    free(handle);
+    return ret;
 }
 
 static cJSON *load_json(const char *path)
 {
-    char *p, *str = read_file(path);
-    uint8_t i, hash[16];
+    char *str = read_file(path);
     cJSON *json;
 
     if (!str)
         return NULL;
 
     json = cJSON_Parse(str);
-
-    /* Calculate MD5 hash as config version */
-    mbedtls_md5((unsigned char *)str, strlen(str), hash);
-    for (i = 0, p = config_version; i < 16; i++)
-        p += sprintf(p, "%02x", hash[i]);
 
     free(str);
     return json;
@@ -448,21 +494,60 @@ char *config_version_get(void)
     return config_version;
 }
 
-int config_initialize(void)
+int config_load(uint8_t partition_id)
 {
-    ESP_LOGI(TAG, "Initializing configuration");
+    char *p, partition_name[] = { 'f', 's', '_', 'x', '\0' };
     esp_vfs_spiffs_conf_t conf = {
         .base_path = "/spiffs",
-        .partition_label = NULL,
+        .partition_label = partition_name,
         .max_files = 5,
         .format_if_mount_failed = true
     };
+    uint8_t i, sha[32];
+
+    partition_name[3] = partition_id + '0';
+    ESP_LOGD(TAG, "Loading config from partition %s", partition_name);
 
     ESP_ERROR_CHECK(esp_vfs_spiffs_register(&conf));
 
     /* Load config.json from SPIFFS */
     if (!(config = load_json(config_file_name)))
+    {
+        esp_vfs_spiffs_unregister(partition_name);
         return -1;
+    }
+
+    /* Calulate hash of active partition */
+    esp_partition_get_sha256(esp_partition_find_first(ESP_PARTITION_TYPE_DATA,
+        ESP_PARTITION_SUBTYPE_DATA_SPIFFS, partition_name), sha);
+    for (p = config_version, i = 0; i < sizeof(sha); i++)
+        p += sprintf(p, "%02x", sha[i]);
+
+    return 0;
+}
+
+int config_initialize(void)
+{
+    uint8_t partition;
+
+    ESP_LOGI(TAG, "Initializing configuration");
+    ESP_ERROR_CHECK(nvs_open(nvs_namespace, NVS_READWRITE, &nvs));
+
+    partition = config_active_partition_get();
+
+    /* Attempt to load configuration from active partition with fall-back */
+    if (config_load(partition))
+    {
+        ESP_LOGE(TAG, "Failed loading partition %d, falling back to %d",
+            partition, !partition);
+        if (config_load(!partition))
+        {
+            ESP_LOGE(TAG, "Failed loading partition %d as well", !partition);
+            return -1;
+        }
+        /* Fall-back partition is OK, mark it as active */
+        config_active_partition_set(!partition);
+    }
 
     ESP_LOGI(TAG, "version: %s", config_version_get());
     return 0;
