@@ -89,7 +89,7 @@ static int ibeacon_is_broadcaster(uint8_t *adv_data, size_t adv_data_len)
 static void ibeacon_metadata_get(uint8_t *adv_data, size_t adv_data_len,
     int rssi, broadcaster_meta_data_cb_t cb, void *ctx)
 {
-    char s[5];
+    char s[6];
     ibeacon_t *beacon = ibeacon_data_get(adv_data, adv_data_len, NULL);
 
     cb("UUID", _uuidtoa(beacon->proximity_uuid), ctx);

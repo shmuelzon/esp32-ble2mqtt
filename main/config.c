@@ -390,7 +390,7 @@ uint16_t config_log_port_get(void)
     if (cJSON_IsNumber(port))
         return port->valuedouble;
 
-    return NULL;
+    return 0;
 }
 
 /* Configuration Update */
