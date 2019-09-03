@@ -3,6 +3,7 @@
 #include <esp_event_loop.h>
 #include <esp_log.h>
 #include <esp_wifi.h>
+#include <esp_wpa2.h>
 #include <mdns.h>
 #include <arpa/inet.h>
 #include <string.h>
@@ -77,14 +78,54 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     return ESP_OK;
 }
 
-int wifi_connect(const char *ssid, const char *password)
+eap_method_t wifi_eap_atomethod(const char *method)
 {
+    if (method == NULL)
+        return EAP_NONE;
+
+    struct {
+        const char *name;
+        int method;
+    } *p, methods[] = {
+        { "TLS", EAP_TLS },
+        { "PEAP", EAP_PEAP },
+        { "TTLS", EAP_TTLS },
+        { NULL, EAP_NONE }
+    };
+
+    for (p = methods; p->name; p++)
+    {
+        if (!strcmp(p->name, method))
+            break;
+    }
+
+    return p->method;
+}
+
+int wifi_connect(const char *ssid, const char *password,
+    eap_method_t eap_method, const char *eap_identity,
+    const char *eap_username, const char *eap_password,
+    const char *ca_cert, const char *client_cert, const char *client_key)
+{
+    esp_wpa2_config_t config = WPA2_CONFIG_INIT_DEFAULT();
     wifi_config_t wifi_config = {};
     strncpy((char *)wifi_config.sta.ssid, ssid, 32);
     strncpy((char *)wifi_config.sta.password, password, 64);
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
+    if (eap_method) {
+        /*ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_ca_cert((uint8_t *)ca_cert, strlen(ca_cert)));
+        ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_cert_key((uint8_t *)client_cert, strlen(client_cert),
+            (uint8_t *)client_key, strlen(client_key), NULL, 0));*/
+        if (eap_identity != NULL)
+            ESP_ERROR_CHECK( esp_wifi_sta_wpa2_ent_set_identity((uint8_t *)eap_identity, strlen(eap_identity)));
+        if (eap_method == EAP_PEAP || eap_method == EAP_TTLS) {
+            ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_username((uint8_t *)eap_username, strlen(eap_username)));
+            ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_password((uint8_t *)eap_password, strlen(eap_password)));
+        }
+        ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_enable(&config));
+    }
     ESP_LOGI(TAG, "Connecting to SSID %s", wifi_config.sta.ssid);
     ESP_ERROR_CHECK(esp_wifi_start());
 

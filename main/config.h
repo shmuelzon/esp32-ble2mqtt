@@ -35,6 +35,13 @@ const char *config_mqtt_set_suffix_get(void);
 /* WiFi Configuration*/
 const char *config_wifi_ssid_get(void);
 const char *config_wifi_password_get(void);
+const char *config_eap_ca_cert_get(void);
+const char *config_eap_client_cert_get(void);
+const char *config_eap_client_key_get(void);
+const char *config_eap_method_get(void);
+const char *config_eap_identity_get(void);
+const char *config_eap_username_get(void);
+const char *config_eap_password_get(void);
 
 /* Remote Logging Configuration */
 const char *config_log_host_get(void);
