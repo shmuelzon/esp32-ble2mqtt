@@ -112,8 +112,8 @@ The `wifi` section below includes the following entries:
   * `method` - `TLS`, `PEAP` or `TTLS`
   * `identity` - The EAP identity
   * `ca_cert`, `client_cert`, `client_key` - Full path names, including a
-    leading slash (/), of the certificate/key file (in respectively PEM, CRT and
-    KEY format) stored under the data folder.
+    leading slash (/), of the certificate/key file (in PEM format) stored under
+    the data folder
   * `username`, `password` - EAP login credentials
 
 The `mqtt` section below includes the following entries:

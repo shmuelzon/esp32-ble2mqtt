@@ -115,20 +115,38 @@ int wifi_connect(const char *ssid, const char *password,
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
-    if (eap_method) {
-        ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_ca_cert((uint8_t *)ca_cert,
-            ca_cert ? strlen(ca_cert) : 0));
-        ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_cert_key((uint8_t *)client_cert,
-            client_cert ? strlen(client_cert) : 0, (uint8_t *)client_key,
-            client_key ? strlen(client_key) : 0, NULL, 0));
+    if (eap_method)
+    {
+        if (ca_cert)
+        {
+            ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_ca_cert((uint8_t *)ca_cert,
+                strlen(ca_cert)));
+        }
+        if (client_cert)
+        {
+            ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_cert_key((uint8_t *)client_cert,
+                strlen(client_cert), (uint8_t *)client_key,
+                client_key ? strlen(client_key) : 0, NULL, 0));
+        }
         if (eap_identity)
+        {
             ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_identity((uint8_t *)eap_identity,
                 strlen(eap_identity)));
-        if (eap_method == EAP_PEAP || eap_method == EAP_TTLS) {
-            ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_username((uint8_t *)eap_username,
-                strlen(eap_username)));
-            ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_password((uint8_t *)eap_password,
-                strlen(eap_password)));
+        }
+        if (eap_method == EAP_PEAP || eap_method == EAP_TTLS)
+        {
+            if (eap_username || eap_password)
+            {
+                ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_username((uint8_t *)eap_username,
+                    strlen(eap_username)));
+                ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_password((uint8_t *)eap_password,
+                    strlen(eap_password)));
+            }
+            else
+            {
+                ESP_LOGE(TAG, "Username and password are required for "
+                    "Tunneled TLS or Protected EAP");
+            }
         }
         ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_enable(&config));
     }
