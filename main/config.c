@@ -370,6 +370,80 @@ const char *config_wifi_password_get(void)
     return NULL;
 }
 
+const char *config_wifi_eap_get(const char *param_name)
+{
+    cJSON *wifi = cJSON_GetObjectItemCaseSensitive(config, "wifi");
+    cJSON *eap = cJSON_GetObjectItemCaseSensitive(wifi, "eap");
+    cJSON *param = cJSON_GetObjectItemCaseSensitive(eap, param_name);
+
+    if (cJSON_IsString(param))
+        return param->valuestring;
+
+    return NULL;
+}
+
+const char *config_eap_file_get(const char *field)
+{
+    const char *file = config_wifi_eap_get(field);
+    char buf[128];
+
+    if (!file)
+        return NULL;
+
+    snprintf(buf, sizeof(buf), "/spiffs%s", file);
+    return read_file(buf);
+}
+
+const char *config_eap_ca_cert_get(void)
+{
+    static const char *cert;
+
+    if (!cert)
+        cert = config_eap_file_get("ca_cert");
+
+    return cert;
+}
+
+const char *config_eap_client_cert_get(void)
+{
+    static const char *cert;
+
+    if (!cert)
+        cert = config_eap_file_get("client_cert");
+
+    return cert;
+}
+
+const char *config_eap_client_key_get(void)
+{
+    static const char *key;
+
+    if (!key)
+        key = config_eap_file_get("client_key");
+
+    return key;
+}
+
+const char *config_eap_method_get(void)
+{
+    return config_wifi_eap_get("method");
+}
+
+const char *config_eap_identity_get(void)
+{
+    return config_wifi_eap_get("identity");
+}
+
+const char *config_eap_username_get(void)
+{
+    return config_wifi_eap_get("username");
+}
+
+const char *config_eap_password_get(void)
+{
+    return config_wifi_eap_get("password");
+}
+
 /* Remote Logging Configuration */
 const char *config_log_host_get(void)
 {
@@ -500,7 +574,7 @@ int config_load(uint8_t partition_id)
     esp_vfs_spiffs_conf_t conf = {
         .base_path = "/spiffs",
         .partition_label = partition_name,
-        .max_files = 5,
+        .max_files = 8,
         .format_if_mount_failed = true
     };
     uint8_t i, sha[32];

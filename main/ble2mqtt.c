@@ -793,5 +793,10 @@ void app_main()
     ESP_ERROR_CHECK(start_ble2mqtt_task());
 
     /* Start by connecting to WiFi */
-    wifi_connect(config_wifi_ssid_get(), config_wifi_password_get());
+    wifi_connect(config_wifi_ssid_get(), config_wifi_password_get(),
+        wifi_eap_atomethod(config_eap_method_get()),
+        config_eap_identity_get(),
+        config_eap_username_get(), config_eap_password_get(),
+        config_eap_ca_cert_get(), config_eap_client_cert_get(),
+        config_eap_client_key_get());
 }

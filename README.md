@@ -93,12 +93,28 @@ The `wifi` section below includes the following entries:
 {
   "wifi": {
     "ssid": "MY_SSID",
-    "password": "MY_PASSWORD"
+    "password": "MY_PASSWORD",
+    "eap": {
+      "method": null,
+      "identity": null,
+      "client_cert": null,
+      "client_key": null,
+      "server_cert": null,
+      "username": null,
+      "password": null
+    }
   }
 }
 ```
 * `ssid` - The WiFi SSID the ESP32 should connect to
 * `password` - The security password for the above network
+* `eap` - WPA-Enterprise configuration (for enterprise networks only)
+  * `method` - `TLS`, `PEAP` or `TTLS`
+  * `identity` - The EAP identity
+  * `ca_cert`, `client_cert`, `client_key` - Full path names, including a
+    leading slash (/), of the certificate/key file (in PEM format) stored under
+    the data folder
+  * `username`, `password` - EAP login credentials
 
 The `mqtt` section below includes the following entries:
 ```json
