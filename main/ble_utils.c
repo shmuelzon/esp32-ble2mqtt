@@ -479,9 +479,9 @@ uint8_t *atochar(ble_uuid_t uuid, const char *data, size_t len, size_t *ret_len)
         case CHAR_TYPE_UINT8:
         case CHAR_TYPE_SINT8:
             if (*types == CHAR_TYPE_SINT8)
-                *p += strtol(val, NULL, 10);
+                *p = strtol(val, NULL, 10);
             else
-                *p += strtoul(val, NULL, 10);
+                *p = strtoul(val, NULL, 10);
             p += 1;
             break;
         case CHAR_TYPE_UINT12:
