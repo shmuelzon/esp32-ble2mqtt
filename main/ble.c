@@ -441,7 +441,7 @@ int ble_characteristic_write(mac_addr_t mac, ble_uuid_t service_uuid,
         return -1;
     }
 
-    if (!(characteristic->properties & CHAR_PROP_WRITE))
+    if (!(characteristic->properties & (CHAR_PROP_WRITE | CHAR_PROP_WRITE_NR)))
         return -1;
 
     ble_operation_enqueue(&operation_queue, BLE_OPERATION_TYPE_WRITE, device,

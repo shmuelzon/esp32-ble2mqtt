@@ -395,7 +395,7 @@ static void ble_on_characteristic_found(mac_addr_t mac, ble_uuid_t service_uuid,
     }
 
     /* Characteristic is writable */
-    if (properties & CHAR_PROP_WRITE)
+    if (properties & (CHAR_PROP_WRITE | CHAR_PROP_WRITE_NR))
     {
         mqtt_subscribe(ble_topic_suffix(topic, 0), config_mqtt_qos_get(),
             ble_on_mqtt_set, ble_ctx_gen(mac, service_uuid,
