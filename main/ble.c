@@ -42,6 +42,7 @@ static esp_ble_scan_params_t ble_scan_params = {
 typedef enum {
     BLE_OPERATION_TYPE_READ,
     BLE_OPERATION_TYPE_WRITE,
+    BLE_OPERATION_TYPE_WRITE_NR,
     BLE_OPERATION_TYPE_WRITE_CHAR,
 } ble_operation_type_t;
 
@@ -142,6 +143,11 @@ static inline void ble_operation_perform(ble_operation_t *operation)
         esp_ble_gattc_write_char(g_gattc_if, operation->device->conn_id,
             operation->characteristic->handle, operation->len, operation->value,
             ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
+        break;
+    case BLE_OPERATION_TYPE_WRITE_NR:
+        esp_ble_gattc_write_char(g_gattc_if, operation->device->conn_id,
+            operation->characteristic->handle, operation->len, operation->value,
+            ESP_GATT_WRITE_TYPE_NO_RSP, ESP_GATT_AUTH_REQ_NONE);
         break;
     case BLE_OPERATION_TYPE_WRITE_CHAR:
         esp_ble_gattc_write_char_descr(g_gattc_if, operation->device->conn_id,
@@ -441,10 +447,12 @@ int ble_characteristic_write(mac_addr_t mac, ble_uuid_t service_uuid,
         return -1;
     }
 
-    if (!(characteristic->properties & CHAR_PROP_WRITE))
+    if (!(characteristic->properties & (CHAR_PROP_WRITE | CHAR_PROP_WRITE_NR)))
         return -1;
 
-    ble_operation_enqueue(&operation_queue, BLE_OPERATION_TYPE_WRITE, device,
+    ble_operation_enqueue(&operation_queue,
+        characteristic->properties & CHAR_PROP_WRITE ?
+        BLE_OPERATION_TYPE_WRITE : BLE_OPERATION_TYPE_WRITE_NR, device,
         characteristic, value_len, value);
 
     return 0;
