@@ -245,7 +245,7 @@ configuration:
 
     ```json
     "passkeys": {
-      "aa:bb:cc:dd:ee:ff": 000000,
+      "aa:bb:cc:dd:ee:ff": 0,
       "00:11:22:??:??:??": 123456
     }
     ```
