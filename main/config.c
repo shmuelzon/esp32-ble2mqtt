@@ -5,6 +5,7 @@
 #include <esp_spiffs.h>
 #include <nvs.h>
 #include <cJSON.h>
+#include <ctype.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
@@ -68,7 +69,7 @@ static cJSON *config_ble_get_name_by_uuid(uint8_t is_service,
     cJSON *list = cJSON_GetObjectItemCaseSensitive(type, "definitions");
 
     /* Check config.json for override values */
-    cJSON *obj = cJSON_GetObjectItemCaseSensitive(list, uuid);
+    cJSON *obj = cJSON_GetObjectItem(list, uuid);
     cJSON *field = cJSON_GetObjectItemCaseSensitive(obj, field_name);
 
     return field;
@@ -123,7 +124,8 @@ const char **config_ble_characteristic_types_get(const char *uuid)
 
 int match_wildcard(const char *fmt, const char *str)
 {
-    while(*fmt && (*fmt == *str || *fmt == '?'))
+    while(*fmt &&
+        (tolower((uint8_t)*fmt) == tolower((uint8_t)*str) || *fmt == '?'))
     {
         fmt++;
         str++;
