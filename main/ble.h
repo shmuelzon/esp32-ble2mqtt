@@ -19,7 +19,7 @@
 /* Event callback types */
 typedef void (*ble_on_broadcaster_discovered_cb_t)(mac_addr_t mac,
     uint8_t *adv_data, size_t adv_data_len, int rssi, broadcaster_ops_t *ops);
-typedef void (*ble_on_device_discovered_cb_t)(mac_addr_t mac);
+typedef void (*ble_on_device_discovered_cb_t)(mac_addr_t mac, int rssi);
 typedef void (*ble_on_device_connected_cb_t)(mac_addr_t mac);
 typedef void (*ble_on_device_disconnected_cb_t)(mac_addr_t mac);
 typedef void (*ble_on_device_services_discovered_cb_t)(mac_addr_t mac);

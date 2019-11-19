@@ -273,12 +273,12 @@ static void ble_on_broadcaster_discovered(mac_addr_t mac, uint8_t *adv_data,
     free(mac_str);
 }
 
-static void ble_on_device_discovered(mac_addr_t mac)
+static void ble_on_device_discovered(mac_addr_t mac, int rssi)
 {
     uint8_t connect = config_ble_should_connect(mactoa(mac));
 
-    ESP_LOGI(TAG, "Discovered BLE device: " MAC_FMT ", %sconnecting",
-        MAC_PARAM(mac), connect ? "" : "not ");
+    ESP_LOGI(TAG, "Discovered BLE device: " MAC_FMT " (RSSI: %d), %sconnecting",
+        MAC_PARAM(mac), rssi, connect ? "" : "not ");
 
     if (!connect)
         return;
@@ -472,6 +472,7 @@ typedef struct {
         } ble_broadcaster_discovered;
         struct {
             mac_addr_t mac;
+            int rssi;
         } ble_device_discovered;
         struct {
             mac_addr_t mac;
@@ -525,7 +526,8 @@ static void ble2mqtt_handle_event(event_t *event)
         free(event->ble_broadcaster_discovered.adv_data);
         break;
     case EVENT_TYPE_BLE_DEVICE_DISCOVERED:
-        ble_on_device_discovered(event->ble_device_discovered.mac);
+        ble_on_device_discovered(event->ble_device_discovered.mac,
+            event->ble_device_discovered.rssi);
         break;
     case EVENT_TYPE_BLE_DEVICE_CONNECTED:
         ble_on_device_connected(event->ble_device_connected.mac);
@@ -667,15 +669,16 @@ static void _ble_on_broadcaster_discovered(mac_addr_t mac, uint8_t *adv_data,
     xQueueSend(event_queue, &event, portMAX_DELAY);
 }
 
-static void _ble_on_device_discovered(mac_addr_t mac)
+static void _ble_on_device_discovered(mac_addr_t mac, int rssi)
 {
     event_t *event = malloc(sizeof(*event));
 
     event->type = EVENT_TYPE_BLE_DEVICE_DISCOVERED;
     memcpy(event->ble_device_discovered.mac, mac, sizeof(mac_addr_t));
+    event->ble_device_discovered.rssi = rssi;
 
-    ESP_LOGD(TAG, "Queuing event BLE_DEVICE_DISCOVERED (" MAC_FMT ")",
-        MAC_PARAM(mac));
+    ESP_LOGD(TAG, "Queuing event BLE_DEVICE_DISCOVERED (" MAC_FMT ", %d)",
+        MAC_PARAM(mac), rssi);
     xQueueSend(event_queue, &event, portMAX_DELAY);
 }
 
