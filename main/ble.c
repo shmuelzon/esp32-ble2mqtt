@@ -153,13 +153,9 @@ static inline void ble_operation_perform(ble_operation_t *operation)
         esp_ble_gattc_write_char_descr(g_gattc_if, operation->device->conn_id,
             operation->characteristic->client_config_handle, operation->len,
             operation->value,
-            ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
+            ESP_GATT_WRITE_TYPE_NO_RSP, ESP_GATT_AUTH_REQ_NONE);
         break;
     }
-
-    if (operation->len)
-        free(operation->value);
-    free(operation);
 }
 
 static void ble_operation_dequeue(ble_operation_t **queue)
@@ -176,6 +172,13 @@ static void ble_operation_dequeue(ble_operation_t **queue)
         UUID_PARAM(operation->characteristic->uuid), operation->len,
         operation->value);
     ble_operation_perform(operation);
+
+    if (operation->type == BLE_OPERATION_TYPE_WRITE_CHAR)
+        ble_operation_dequeue(queue);
+
+    if (operation->len)
+        free(operation->value);
+    free(operation);
 }
 
 static void ble_queue_timer_cb(TimerHandle_t xTimer)
@@ -758,7 +761,12 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
         }
         break;
     case ESP_GATTC_WRITE_DESCR_EVT:
-        need_dequeue = 1;
+        if (param->write.status != ESP_GATT_OK)
+        {
+            ESP_LOGE(TAG,
+                "Failed writing characteristic descriptor, status = 0x%x",
+                param->write.status);
+        }
         break;
     case ESP_GATTC_REG_FOR_NOTIFY_EVT:
         if (param->reg_for_notify.status != ESP_GATT_OK)
