@@ -38,7 +38,7 @@ def log_listener(args):
     try:
       data, addr = sock.recvfrom(2048)
       print('%s (%s): %s' % (datetime.datetime.now(), get_hostname(addr),
-        data.decode()), end='')
+        data.decode('utf-8', 'ignore')), end='')
     except KeyboardInterrupt:
       break;
 
