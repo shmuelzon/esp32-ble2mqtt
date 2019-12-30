@@ -362,7 +362,8 @@ static void mijia_temp_hum_metadata_get(uint8_t *adv_data, size_t adv_data_len,
     cb("MessageCounter", s, ctx);
     if (mijia_temp_hum->data_type == MIJIA_TEMP_HUM_DATA_TYPE_TEMP)
     {
-        sprintf(s, "%.1f", le16toh(*(uint16_t *)mijia_temp_hum->data) / 10.0);
+        sprintf(s, "%.1f",
+            (int16_t)le16toh(*(uint16_t *)mijia_temp_hum->data) / 10.0);
         cb("Temperature", s, ctx);
     }
     else if (mijia_temp_hum->data_type == MIJIA_TEMP_HUM_DATA_TYPE_HUM)
@@ -377,7 +378,8 @@ static void mijia_temp_hum_metadata_get(uint8_t *adv_data, size_t adv_data_len,
     }
     else if (mijia_temp_hum->data_type == MIJIA_TEMP_HUM_DATA_TYPE_TEMP_HUM)
     {
-        sprintf(s, "%.1f", le16toh(*(uint16_t *)mijia_temp_hum->data) / 10.0);
+        sprintf(s, "%.1f",
+            (int16_t)le16toh(*(uint16_t *)mijia_temp_hum->data) / 10.0);
         cb("Temperature", s, ctx);
         sprintf(s, "%.1f",
             le16toh(*(uint16_t *)(mijia_temp_hum->data + 2)) / 10.0);
