@@ -77,7 +77,7 @@ static int ibeacon_is_broadcaster(uint8_t *adv_data, size_t adv_data_len)
     uint8_t len;
     ibeacon_t *beacon = ibeacon_data_get(adv_data, adv_data_len, &len);
 
-    if (!beacon || len != sizeof(ibeacon_t))
+    if (!beacon || len < sizeof(ibeacon_t))
         return 0;
 
     /* Technically, we should also check the device is BLE only and
