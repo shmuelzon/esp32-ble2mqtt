@@ -205,6 +205,40 @@ uint32_t config_ble_passkey_get(const char *mac)
     return 0;
 }
 
+/* Ethernet Configuration */
+const char *config_eth_clk_mode_get(void)
+{
+    cJSON *eth = cJSON_GetObjectItemCaseSensitive(config, "eth");
+    cJSON *clk_mode = cJSON_GetObjectItemCaseSensitive(eth, "clk_mode");
+
+    if (cJSON_IsString(clk_mode))
+        return clk_mode->valuestring;
+
+    return NULL;
+}
+
+const char *config_eth_phy_get(void)
+{
+    cJSON *eth = cJSON_GetObjectItemCaseSensitive(config, "eth");
+    cJSON *phy = cJSON_GetObjectItemCaseSensitive(eth, "phy");
+
+    if (cJSON_IsString(phy))
+        return phy->valuestring;
+
+    return NULL;
+}
+
+uint8_t config_eth_phy_gpio_power_get(void)
+{
+    cJSON *eth = cJSON_GetObjectItemCaseSensitive(config, "eth");
+    cJSON *phy_gpio_power = cJSON_GetObjectItemCaseSensitive(eth, "phy_gpio_power");
+
+    if (cJSON_IsNumber(phy_gpio_power))
+        return phy_gpio_power->valuedouble;
+
+    return 0;
+}
+
 /* MQTT Configuration*/
 const char *config_mqtt_server_get(const char *param_name)
 {
@@ -347,6 +381,14 @@ const char *config_mqtt_get_suffix_get(void)
 const char *config_mqtt_set_suffix_get(void)
 {
     return config_mqtt_topics_get("set_suffix", "/Set");
+}
+
+/* Network Configuration */
+config_network_type_t config_network_type_get(void)
+{
+    cJSON *eth = cJSON_GetObjectItemCaseSensitive(config, "eth");
+
+    return eth ? NETWORK_TYPE_ETH : NETWORK_TYPE_WIFI;
 }
 
 /* WiFi Configuration */

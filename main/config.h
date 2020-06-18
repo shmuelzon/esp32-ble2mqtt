@@ -6,6 +6,10 @@
 
 /* Types */
 typedef struct config_update_handle_t config_update_handle_t;
+typedef enum config_network_type_t {
+    NETWORK_TYPE_WIFI,
+    NETWORK_TYPE_ETH,
+} config_network_type_t;
 
 /* BLE Configuration*/
 const char *config_ble_service_name_get(const char *uuid);
@@ -15,6 +19,11 @@ uint8_t config_ble_characteristic_should_include(const char *uuid);
 uint8_t config_ble_service_should_include(const char *uuid);
 uint8_t config_ble_should_connect(const char *mac);
 uint32_t config_ble_passkey_get(const char *mac);
+
+/* Ethernet Configuration */
+const char *config_eth_clk_mode_get(void);
+const char *config_eth_phy_get(void);
+uint8_t config_eth_phy_gpio_power_get(void);
 
 /* MQTT Configuration*/
 const char *config_mqtt_host_get(void);
@@ -31,6 +40,9 @@ uint8_t config_mqtt_retained_get(void);
 const char *config_mqtt_prefix_get(void);
 const char *config_mqtt_get_suffix_get(void);
 const char *config_mqtt_set_suffix_get(void);
+
+/* Network Configuration */
+config_network_type_t config_network_type_get(void);
 
 /* WiFi Configuration*/
 const char *config_wifi_ssid_get(void);
