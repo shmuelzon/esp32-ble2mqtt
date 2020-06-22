@@ -116,6 +116,31 @@ The `wifi` section below includes the following entries:
     the data folder
   * `username`, `password` - EAP login credentials
 
+The `eth` section below includes the following entries:
+```json
+{
+  "eth": {
+    "clk_mode": "ETH_CLOCK_GPIO17_OUT",
+    "phy": "LAN8720",
+    "phy_gpio_power": 12
+  }
+}
+```
+* `clk_mode` - 
+[Ethernet clock mode](https://docs.espressif.com/projects/esp-idf/en/release-v3.3/api-reference/network/esp_eth.html#_CPPv416eth_clock_mode_t),
+one of:
+  * `ETH_CLOCK_GPIO0_IN`
+  * `ETH_CLOCK_GPIO0_OUT`
+  * `ETH_CLOCK_GPIO16_OUT`
+  * `ETH_CLOCK_GPIO17_OUT`
+* `phy` - The PHY chip connected to ESP32 RMII, one of:
+  * `LAN8720`
+  * `TLK110`
+  * `IP101`
+* `phy_gpio_power` - GPIO pin controlling PHY power (optional)
+
+_Note: Defining the `eth` section will disable WiFi_
+
 The `mqtt` section below includes the following entries:
 ```json
 {

@@ -2,6 +2,7 @@
 #include "broadcasters.h"
 #include "ble.h"
 #include "ble_utils.h"
+#include "eth.h"
 #include "log.h"
 #include "mqtt.h"
 #include "ota.h"
@@ -34,7 +35,16 @@ static char *device_name_get(void)
 
     if (!*name)
     {
-        uint8_t *mac = wifi_mac_get();
+        uint8_t *mac = NULL;
+        switch (config_network_type_get())
+        {
+        case NETWORK_TYPE_ETH:
+            mac = eth_mac_get();
+            break;
+        case NETWORK_TYPE_WIFI:
+            mac = wifi_mac_get();
+            break;
+        }
         sprintf(name, "BLE2MQTT-%02X%02X", mac[4], mac[5]);
     }
 
@@ -156,11 +166,11 @@ static void cleanup(void)
     ota_unsubscribe();
 }
 
-/* Wi-Fi callback functions */
-static void wifi_on_connected(void)
+/* Network callback functions */
+static void network_on_connected(void)
 {
     log_start(config_log_host_get(), config_log_port_get());
-    ESP_LOGI(TAG, "Connected to WiFi, connecting to MQTT");
+    ESP_LOGI(TAG, "Connected to the network, connecting to MQTT");
     mqtt_connect(config_mqtt_host_get(), config_mqtt_port_get(),
         config_mqtt_client_id_get(), config_mqtt_username_get(),
         config_mqtt_password_get(), config_mqtt_ssl_get(),
@@ -168,10 +178,10 @@ static void wifi_on_connected(void)
         config_mqtt_client_key_get());
 }
 
-static void wifi_on_disconnected(void)
+static void network_on_disconnected(void)
 {
     log_stop();
-    ESP_LOGI(TAG, "Disconnected from WiFi, stopping MQTT");
+    ESP_LOGI(TAG, "Disconnected from the network, stopping MQTT");
     mqtt_disconnect();
     /* We don't get notified when manually stopping MQTT */
     cleanup();
@@ -443,9 +453,9 @@ static uint32_t ble_on_passkey_requested(mac_addr_t mac)
 /* BLE2MQTT Task and event callbacks */
 typedef enum {
     EVENT_TYPE_HEARTBEAT_TIMER,
+    EVENT_TYPE_NETWORK_CONNECTED,
+    EVENT_TYPE_NETWORK_DISCONNECTED,
     EVENT_TYPE_OTA_COMPLETED,
-    EVENT_TYPE_WIFI_CONNECTED,
-    EVENT_TYPE_WIFI_DISCONNECTED,
     EVENT_TYPE_MQTT_CONNECTED,
     EVENT_TYPE_MQTT_DISCONNECTED,
     EVENT_TYPE_BLE_BROADCASTER_DISCOVERED,
@@ -502,14 +512,14 @@ static void ble2mqtt_handle_event(event_t *event)
     case EVENT_TYPE_HEARTBEAT_TIMER:
         uptime_publish();
         break;
+    case EVENT_TYPE_NETWORK_CONNECTED:
+        network_on_connected();
+        break;
+    case EVENT_TYPE_NETWORK_DISCONNECTED:
+        network_on_disconnected();
+        break;
     case EVENT_TYPE_OTA_COMPLETED:
         ota_on_completed(event->ota_completed.type, event->ota_completed.err);
-        break;
-    case EVENT_TYPE_WIFI_CONNECTED:
-        wifi_on_connected();
-        break;
-    case EVENT_TYPE_WIFI_DISCONNECTED:
-        wifi_on_disconnected();
         break;
     case EVENT_TYPE_MQTT_CONNECTED:
         mqtt_on_connected();
@@ -599,6 +609,26 @@ static int start_ble2mqtt_task(void)
     return 0;
 }
 
+static void _network_on_connected(void)
+{
+    event_t *event = malloc(sizeof(*event));
+
+    event->type = EVENT_TYPE_NETWORK_CONNECTED;
+
+    ESP_LOGD(TAG, "Queuing event NETWORK_CONNECTED");
+    xQueueSend(event_queue, &event, portMAX_DELAY);
+}
+
+static void _network_on_disconnected(void)
+{
+    event_t *event = malloc(sizeof(*event));
+
+    event->type = EVENT_TYPE_NETWORK_DISCONNECTED;
+
+    ESP_LOGD(TAG, "Queuing event NETWORK_DISCONNECTED");
+    xQueueSend(event_queue, &event, portMAX_DELAY);
+}
+
 static void _ota_on_completed(ota_type_t type, ota_err_t err)
 {
     event_t *event = malloc(sizeof(*event));
@@ -608,26 +638,6 @@ static void _ota_on_completed(ota_type_t type, ota_err_t err)
     event->ota_completed.err = err;
 
     ESP_LOGD(TAG, "Queuing event HEARTBEAT_TIMER (%d, %d)", type, err);
-    xQueueSend(event_queue, &event, portMAX_DELAY);
-}
-
-static void _wifi_on_connected(void)
-{
-    event_t *event = malloc(sizeof(*event));
-
-    event->type = EVENT_TYPE_WIFI_CONNECTED;
-
-    ESP_LOGD(TAG, "Queuing event WIFI_CONNECTED");
-    xQueueSend(event_queue, &event, portMAX_DELAY);
-}
-
-static void _wifi_on_disconnected(void)
-{
-    event_t *event = malloc(sizeof(*event));
-
-    event->type = EVENT_TYPE_WIFI_DISCONNECTED;
-
-    ESP_LOGD(TAG, "Queuing event WIFI_DISCONNECTED");
     xQueueSend(event_queue, &event, portMAX_DELAY);
 }
 
@@ -762,11 +772,24 @@ void app_main()
     ESP_ERROR_CHECK(ota_initialize());
     ota_set_on_completed_cb(_ota_on_completed);
 
-    /* Init Wi-Fi */
-    ESP_ERROR_CHECK(wifi_initialize());
-    wifi_hostname_set(device_name_get());
-    wifi_set_on_connected_cb(_wifi_on_connected);
-    wifi_set_on_disconnected_cb(_wifi_on_disconnected);
+    /* Init Network */
+    switch (config_network_type_get())
+    {
+    case NETWORK_TYPE_ETH:
+        /* Init Ethernet */
+        ESP_ERROR_CHECK(eth_initialize());
+        eth_hostname_set(device_name_get());
+        eth_set_on_connected_cb(_network_on_connected);
+        eth_set_on_disconnected_cb(_network_on_disconnected);
+        break;
+    case NETWORK_TYPE_WIFI:
+        /* Init Wi-Fi */
+        ESP_ERROR_CHECK(wifi_initialize());
+        wifi_hostname_set(device_name_get());
+        wifi_set_on_connected_cb(_network_on_connected);
+        wifi_set_on_disconnected_cb(_network_on_disconnected);
+        break;
+    }
 
     /* Init mDNS */
     ESP_ERROR_CHECK(mdns_init());
@@ -795,11 +818,21 @@ void app_main()
     /* Start BLE2MQTT task */
     ESP_ERROR_CHECK(start_ble2mqtt_task());
 
-    /* Start by connecting to WiFi */
-    wifi_connect(config_wifi_ssid_get(), config_wifi_password_get(),
-        wifi_eap_atomethod(config_eap_method_get()),
-        config_eap_identity_get(),
-        config_eap_username_get(), config_eap_password_get(),
-        config_eap_ca_cert_get(), config_eap_client_cert_get(),
-        config_eap_client_key_get());
+    switch (config_network_type_get())
+    {
+    case NETWORK_TYPE_ETH:
+        eth_connect(eth_phy_atophy(config_eth_phy_get()),
+            eth_clk_mode_atoclk_mode(config_eth_clk_mode_get()),
+            config_eth_phy_gpio_power_get());
+        break;
+    case NETWORK_TYPE_WIFI:
+        /* Start by connecting to network */
+        wifi_connect(config_wifi_ssid_get(), config_wifi_password_get(),
+            wifi_eap_atomethod(config_eap_method_get()),
+            config_eap_identity_get(),
+            config_eap_username_get(), config_eap_password_get(),
+            config_eap_ca_cert_get(), config_eap_client_cert_get(),
+            config_eap_client_key_get());
+        break;
+    }
 }
