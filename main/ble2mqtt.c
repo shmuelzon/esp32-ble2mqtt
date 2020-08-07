@@ -821,9 +821,7 @@ void app_main()
     switch (config_network_type_get())
     {
     case NETWORK_TYPE_ETH:
-        eth_connect(eth_phy_atophy(config_eth_phy_get()),
-            eth_clk_mode_atoclk_mode(config_eth_clk_mode_get()),
-            config_eth_phy_gpio_power_get());
+        eth_connect(eth_phy_atophy(config_eth_phy_get()));
         break;
     case NETWORK_TYPE_WIFI:
         /* Start by connecting to network */

@@ -206,17 +206,6 @@ uint32_t config_ble_passkey_get(const char *mac)
 }
 
 /* Ethernet Configuration */
-const char *config_eth_clk_mode_get(void)
-{
-    cJSON *eth = cJSON_GetObjectItemCaseSensitive(config, "eth");
-    cJSON *clk_mode = cJSON_GetObjectItemCaseSensitive(eth, "clk_mode");
-
-    if (cJSON_IsString(clk_mode))
-        return clk_mode->valuestring;
-
-    return NULL;
-}
-
 const char *config_eth_phy_get(void)
 {
     cJSON *eth = cJSON_GetObjectItemCaseSensitive(config, "eth");
@@ -226,17 +215,6 @@ const char *config_eth_phy_get(void)
         return phy->valuestring;
 
     return NULL;
-}
-
-uint8_t config_eth_phy_gpio_power_get(void)
-{
-    cJSON *eth = cJSON_GetObjectItemCaseSensitive(config, "eth");
-    cJSON *phy_gpio_power = cJSON_GetObjectItemCaseSensitive(eth, "phy_gpio_power");
-
-    if (cJSON_IsNumber(phy_gpio_power))
-        return phy_gpio_power->valuedouble;
-
-    return 0;
 }
 
 /* MQTT Configuration*/

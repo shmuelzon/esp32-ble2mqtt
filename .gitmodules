@@ -1,3 +1,0 @@
-[submodule "mkspiffs"]
-	path = mkspiffs
-	url = https://github.com/igrr/mkspiffs.git

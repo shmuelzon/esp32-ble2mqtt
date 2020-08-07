@@ -2,7 +2,7 @@
 
 This project is a BLE to MQTT bridge, i.e. it exposes BLE GATT characteristics
 as MQTT topics for bidirectional communication. It's developed for the ESP32 SoC
-and is based on [ESP-IDF](https://github.com/espressif/esp-idf) release v3.2.2.
+and is based on [ESP-IDF](https://github.com/espressif/esp-idf) release v4.1.
 
 For example, if a device with a MAC address of `a0:e6:f8:50:72:53` exposes the
 [0000180f-0000-1000-8000-00805f9b34fb service](https://developer.bluetooth.org/gatt/services/Pages/ServiceViewer.aspx?u=org.bluetooth.service.battery_service.xml)
@@ -120,24 +120,15 @@ The `eth` section below includes the following entries:
 ```json
 {
   "eth": {
-    "clk_mode": "ETH_CLOCK_GPIO17_OUT",
-    "phy": "LAN8720",
-    "phy_gpio_power": 12
+    "phy": "MY_ETH_PHY"
   }
 }
 ```
-* `clk_mode` - 
-[Ethernet clock mode](https://docs.espressif.com/projects/esp-idf/en/release-v3.3/api-reference/network/esp_eth.html#_CPPv416eth_clock_mode_t),
-one of:
-  * `ETH_CLOCK_GPIO0_IN`
-  * `ETH_CLOCK_GPIO0_OUT`
-  * `ETH_CLOCK_GPIO16_OUT`
-  * `ETH_CLOCK_GPIO17_OUT`
 * `phy` - The PHY chip connected to ESP32 RMII, one of:
-  * `LAN8720`
-  * `TLK110`
   * `IP101`
-* `phy_gpio_power` - GPIO pin controlling PHY power (optional)
+  * `RTL8201`
+  * `LAN8720`
+  * `DP83848`
 
 _Note: Defining the `eth` section will disable WiFi_
 

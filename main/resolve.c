@@ -39,7 +39,7 @@ const char *resolve_host(const char *hostname)
     {
         strncpy(buf, hostname, len);
         buf[len] = '\0';
-        if (!mdns_query_a(buf, 5000, (struct ip4_addr *)&ip.sin_addr))
+        if (!mdns_query_a(buf, 5000, (struct esp_ip4_addr *)&ip.sin_addr))
         {
             sprintf(buf, IPSTR, IP2STR((struct ip4_addr *)&ip.sin_addr));
             ESP_LOGD(TAG, "mDNS resolved %s to %s", hostname, buf);

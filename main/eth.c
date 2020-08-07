@@ -1,13 +1,9 @@
 #include "eth.h"
 #include <esp_err.h>
 #include <esp_eth.h>
-#include <esp_event_loop.h>
+#include <esp_event.h>
 #include <esp_log.h>
-#include <mdns.h>
-#include <eth_phy/phy_lan8720.h>
-#include <eth_phy/phy_tlk110.h>
-#include <eth_phy/phy_ip101.h>
-#include <tcpip_adapter.h>
+#include <driver/gpio.h>
 #include <arpa/inet.h>
 #include <stdbool.h>
 #include <string.h>
@@ -17,8 +13,6 @@ static const char *TAG = "Ethernet";
 static eth_on_connected_cb_t on_connected_cb = NULL;
 static eth_on_disconnected_cb_t on_disconnected_cb = NULL;
 static char *eth_hostname = NULL;
-static uint8_t eth_phy_gpio_power = 0;
-static eth_phy_t eth_phy;
 
 void eth_set_on_connected_cb(eth_on_connected_cb_t cb)
 {
@@ -47,55 +41,46 @@ void eth_hostname_set(const char *hostname)
     eth_hostname = strdup(hostname);
 }
 
-static esp_err_t event_handler(void *ctx, system_event_t *event)
+static void event_handler(void* arg, esp_event_base_t event_base,
+    int32_t event_id, void* event_data)
 {
-    switch(event->event_id) {
-    case SYSTEM_EVENT_ETH_START:
-        if (eth_hostname)
-            tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_ETH, eth_hostname);
-        break;
-    case SYSTEM_EVENT_ETH_GOT_IP:
-        ESP_LOGD(TAG, "Got IP address: %s",
-            inet_ntoa(event->event_info.got_ip.ip_info.ip));
-        if (on_connected_cb)
-            on_connected_cb();
-        break;
-    case SYSTEM_EVENT_ETH_CONNECTED:
-        ESP_LOGI(TAG, "Connected");
-        break;
-    case SYSTEM_EVENT_ETH_DISCONNECTED:
-        ESP_LOGI(TAG, "Disconnected");
-        if (on_disconnected_cb)
-            on_disconnected_cb();
-        break;
-    default:
-        ESP_LOGD(TAG, "Unhandled event (%d)", event->event_id);
-        break;
-    }
-
-    mdns_handle_system_event(ctx, event);
-    return ESP_OK;
-}
-
-uint8_t eth_clk_mode_atoclk_mode(const char *clk_mode)
-{
-    struct {
-        const char *name;
-        int clk_mode;
-    } *p, clk_modes[] = {
-        { "ETH_CLOCK_GPIO0_IN", ETH_CLOCK_GPIO0_IN },
-        { "ETH_CLOCK_GPIO0_OUT", ETH_CLOCK_GPIO0_OUT },
-        { "ETH_CLOCK_GPIO16_OUT", ETH_CLOCK_GPIO16_OUT },
-        { "ETH_CLOCK_GPIO17_OUT", ETH_CLOCK_GPIO17_OUT }
-    };
-
-    for (p = clk_modes; p->name; p++)
+    if (event_base == ETH_EVENT)
     {
-        if (!strcmp(p->name, clk_mode))
+        switch (event_id) {
+        case ETHERNET_EVENT_START:
+            if (eth_hostname)
+                tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_ETH, eth_hostname);
             break;
+        case ETHERNET_EVENT_CONNECTED:
+            ESP_LOGI(TAG, "Connected");
+            break;
+        case ETHERNET_EVENT_DISCONNECTED:
+            ESP_LOGI(TAG, "Disconnected");
+            if (on_disconnected_cb)
+                on_disconnected_cb();
+            break;
+        default:
+            ESP_LOGD(TAG, "Unhandled Ethernet event (%d)", event_id);
+        }
     }
+    else if (event_base == IP_EVENT)
+    {
+        switch (event_id) {
+        case IP_EVENT_ETH_GOT_IP:
+            {
+                ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
 
-    return p->clk_mode;
+                ESP_LOGD(TAG, "Got IP address: %s",
+                    inet_ntoa(event->ip_info.ip));
+                if (on_connected_cb)
+                    on_connected_cb();
+                break;
+            }
+        default:
+            ESP_LOGD(TAG, "Unhandled IP event (%d)", event_id);
+            break;
+        }
+    }
 }
 
 eth_phy_t eth_phy_atophy(const char *phy)
@@ -104,9 +89,10 @@ eth_phy_t eth_phy_atophy(const char *phy)
         const char *name;
         int phy;
     } *p, phys[] = {
+        { "IP101", PHY_IP101 },
+        { "RTL8201", PHY_RTL8201 },
         { "LAN8720", PHY_LAN8720 },
-        { "TLK110", PHY_TLK110 },
-        { "IP101", PHY_IP101 }
+        { "DP83848", PHY_DP83848 },
     };
 
     for (p = phys; p->name; p++)
@@ -118,67 +104,41 @@ eth_phy_t eth_phy_atophy(const char *phy)
     return p->phy;
 }
 
-static void eth_gpio_config_rmii(void)
+int eth_connect(eth_phy_t eth_phy)
 {
-    phy_rmii_configure_data_interface_pins();
-    phy_rmii_smi_configure_pins(23, 18);
-}
+    esp_netif_config_t cfg = ESP_NETIF_DEFAULT_ETH();
+    esp_netif_t *eth_netif = esp_netif_new(&cfg);
+    eth_mac_config_t mac_config = ETH_MAC_DEFAULT_CONFIG();
+    eth_phy_config_t phy_config = ETH_PHY_DEFAULT_CONFIG();
+    esp_eth_mac_t *mac = esp_eth_mac_new_esp32(&mac_config);
+    esp_eth_config_t config = ETH_DEFAULT_CONFIG(mac, NULL);
+    esp_eth_handle_t eth_handle = NULL;
 
-static void eth_phy_power_enable(bool enable)
-{
-    if (!enable && eth_phy == PHY_LAN8720)
-    {
-        phy_lan8720_default_ethernet_config.phy_power_enable(false);
-        ESP_LOGI(TAG, "PHY power disabled");
-    }
-
-    gpio_set_level(eth_phy_gpio_power, enable);
-    vTaskDelay(1);
-
-    if (enable && eth_phy == PHY_LAN8720)
-    {
-        phy_lan8720_default_ethernet_config.phy_power_enable(true);
-        ESP_LOGI(TAG, "PHY power enabled");
-    }
-}
-
-int eth_connect(eth_phy_t phy, uint8_t clk_mode, uint8_t phy_gpio_power)
-{
-    eth_phy = phy;
-    eth_phy_gpio_power = phy_gpio_power;
-    eth_config_t config;
+    ESP_ERROR_CHECK(esp_eth_set_default_handlers(eth_netif));
 
     switch (eth_phy)
     {
-    case PHY_LAN8720:
-        config = phy_lan8720_default_ethernet_config;
-        ESP_LOGI(TAG, "PHY config: LAN8720");
-        break;
-    case PHY_TLK110:
-        config = phy_tlk110_default_ethernet_config;
-        ESP_LOGI(TAG, "PHY config: TLK110");
-        break;
     case PHY_IP101:
-        config = phy_ip101_default_ethernet_config;
         ESP_LOGI(TAG, "PHY config: IP101");
+        config.phy = esp_eth_phy_new_ip101(&phy_config);
+        break;
+    case PHY_RTL8201:
+        ESP_LOGI(TAG, "PHY config: RTL8201");
+        config.phy = esp_eth_phy_new_rtl8201(&phy_config);
+        break;
+    case PHY_LAN8720:
+        ESP_LOGI(TAG, "PHY config: LAN8720");
+        config.phy = esp_eth_phy_new_lan8720(&phy_config);
+        break;
+    case PHY_DP83848:
+        ESP_LOGI(TAG, "PHY config: DP83848");
+        config.phy = esp_eth_phy_new_dp83848(&phy_config);
         break;
     }
 
-    config.clock_mode = clk_mode;
-    config.gpio_config = eth_gpio_config_rmii;
-    config.tcpip_input = tcpip_adapter_eth_input;
-
-    /* Some boards implement PHY power control through GPIO pins, e.g.
-       Olimex ESP32-PoE */
-    if (eth_phy_gpio_power > 0)
-    {
-        gpio_pad_select_gpio(eth_phy_gpio_power);
-        gpio_set_direction(eth_phy_gpio_power, GPIO_MODE_OUTPUT);
-        config.phy_power_enable = eth_phy_power_enable;
-    }
-
-    ESP_ERROR_CHECK(esp_eth_init(&config));
-    ESP_ERROR_CHECK(esp_eth_enable());
+    ESP_ERROR_CHECK(esp_eth_driver_install(&config, &eth_handle));
+    ESP_ERROR_CHECK(esp_netif_attach(eth_netif, esp_eth_new_netif_glue(eth_handle)));
+    ESP_ERROR_CHECK(esp_eth_start(eth_handle));
 
     return 0;
 }
@@ -186,9 +146,11 @@ int eth_connect(eth_phy_t phy, uint8_t clk_mode, uint8_t phy_gpio_power)
 int eth_initialize(void)
 {
     ESP_LOGD(TAG, "Initializing Ethernet");
-    tcpip_adapter_init();
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
 
     return 0;
 }

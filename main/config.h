@@ -21,9 +21,7 @@ uint8_t config_ble_should_connect(const char *mac);
 uint32_t config_ble_passkey_get(const char *mac);
 
 /* Ethernet Configuration */
-const char *config_eth_clk_mode_get(void);
 const char *config_eth_phy_get(void);
-uint8_t config_eth_phy_gpio_power_get(void);
 
 /* MQTT Configuration*/
 const char *config_mqtt_host_get(void);

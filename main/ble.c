@@ -817,7 +817,7 @@ int ble_initialize(void)
     ESP_ERROR_CHECK(esp_bluedroid_init());
     ESP_ERROR_CHECK(esp_bluedroid_enable());
     ESP_ERROR_CHECK(esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT,
-        ESP_PWR_LVL_P7));
+        ESP_PWR_LVL_P9));
     ESP_ERROR_CHECK(esp_ble_gap_register_callback(gap_cb));
     ESP_ERROR_CHECK(esp_ble_gap_config_local_privacy(true));
     ESP_ERROR_CHECK(esp_ble_gattc_register_callback(esp_gattc_cb));
