@@ -163,14 +163,9 @@ int wifi_connect(const char *ssid, const char *password,
     }
     ESP_LOGI(TAG, "Connecting to SSID %s", wifi_config.sta.ssid);
     ESP_ERROR_CHECK(esp_wifi_start());
-    ESP_ERROR_CHECK(esp_wifi_set_max_tx_power(82));
+    ESP_ERROR_CHECK(esp_wifi_set_max_tx_power(78));
 
     return 0;
-}
-
-int wifi_reconnect(void)
-{
-    return esp_wifi_disconnect();
 }
 
 int wifi_initialize(void)
@@ -182,7 +177,6 @@ int wifi_initialize(void)
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
 
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
