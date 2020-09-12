@@ -68,7 +68,7 @@ remote-monitor:
 	$(CONFIG_PYTHON) -u $(PROJECT_PATH)/remote_log.py
 
 validate_config: $(PROJECT_PATH)/data/config.json
-	cat $< | $(CONFIG_PYTHON) -m json.tool > /dev/null 2>&1 || \
+	cat $< | $(CONFIG_PYTHON) -m json.tool > /dev/null || \
 	  (echo "Error: Invalid JSON in configuration file."; exit 1)
 
 .PHONY: upload force-upload upload-config force-upload-config remote-monitor \
