@@ -104,7 +104,9 @@ static void ota_on_completed(ota_type_t type, ota_err_t err)
     {
         if (type == OTA_TYPE_CONFIG)
             ble_clear_bonding_info();
+        vTaskSuspendAll();
         esp_restart();
+        xTaskResumeAll();
     }
     else
         ble_scan_start();
