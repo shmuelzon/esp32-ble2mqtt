@@ -28,14 +28,14 @@ static esp_ble_scan_params_t ble_scan_params = {
      * Time = N * 0.625 msec
      * Time Range: 2.5 msec to 10.24 seconds
      */
-    .scan_interval = 16, /* 16 * 0.625ms = 10ms */
+    .scan_interval = 0x80, /* 128 * 0.625ms = 80ms */
     /* Scan window. The duration of the LE scan. LE_Scan_Window shall be
      * less than or equal to LE_Scan_Interval
      * Range: 0x0004 to 0x4000 Default: 0x0010 (10 ms)
      * Time = N * 0.625 msec
      * Time Range: 2.5 msec to 10240 msec
      */
-    .scan_window = 16, /* 16 * 0.625ms = 10ms */
+    .scan_window = 0x10, /* 16 * 0.625ms = 10ms */
 };
 
 /* Types */
