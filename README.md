@@ -73,14 +73,14 @@ git clone --recursive https://github.com/shmuelzon/esp32-ble2mqtt
 Modify the [configuration file](#configuration) to fit your environment, build
 and flash (make sure to modify the serial device your ESP32 is connected to):
 ```bash
-make flash
+idf.py flash -p /dev/ttyS1
 ```
 
 ## Remote Logging
 
 If configured, the application can send the logs remotely via UDP to another
 host to allow receiving logs from remote devices without a serial connection.
-To receive these logs on your host, execute `make remote-monitor`.
+To receive these logs on your host, execute `idf.py remote-monitor`.
 
 ## Configuration
 
@@ -283,18 +283,18 @@ The optional `log` section below includes the following entries:
 
 It is possible to upgrade both firmware and configuration file over-the-air once
 an initial version was flashed via serial interface. To do so, execute:
-`make upload` or `make upload-config` accordingly.
+`idf.py upload` or `idf.py upload-config` accordingly.
 The above will upgrade all BLE2MQTT devices connected to the MQTT broker defined
 in the configuration file. It is also possible to upgrade a specific device by
 adding the `OTA_TARGET` variable to the above command set to the host name of
 the requested device, e.g.:
 ```bash
-make upload OTA_TARGET=BLE2MQTT-470C
+OTA_TARGET=BLE2MQTT-470C idf.py upload
 ```
 
 Note: In order to avoid unneeded upgrades, there is a mechanism in place to
 compare the new version with the one that resides on the flash. For the firmware
 image it's based on the git tag and for the configuration file it's an MD5 hash
 of its contents. In order to force an upgrade regardless of the currently
-installed version, run `make force-upload` or `make force-upload-config`
+installed version, run `idf.py force-upload` or `idf.py force-upload-config`
 respectively.
