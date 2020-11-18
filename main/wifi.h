@@ -25,6 +25,7 @@ int wifi_connect(const char *ssid, const char *password,
     eap_method_t eap_method, const char *eap_identity,
     const char *eap_username, const char *eap_password,
     const char *ca_cert, const char *client_cert, const char *client_key);
+int wifi_reconnect(void);
 uint8_t *wifi_mac_get(void);
 void wifi_hostname_set(const char *hostname);
 

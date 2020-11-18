@@ -200,8 +200,17 @@ static void mqtt_on_connected(void)
 
 static void mqtt_on_disconnected(void)
 {
+    static uint8_t num_disconnections = 0;
+
     ESP_LOGI(TAG, "Disconnected from MQTT, stopping BLE");
     cleanup();
+
+    if (++num_disconnections % 3 == 0)
+    {
+        ESP_LOGI(TAG,
+            "Failed connecting to MQTT 3 times, reconnecting to the network");
+        wifi_reconnect();
+    }
 }
 
 /* BLE functions */

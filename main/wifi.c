@@ -168,6 +168,11 @@ int wifi_connect(const char *ssid, const char *password,
     return 0;
 }
 
+int wifi_reconnect(void)
+{
+    return esp_wifi_disconnect();
+}
+
 int wifi_initialize(void)
 {
     ESP_LOGD(TAG, "Initializing WiFi station");
