@@ -153,7 +153,7 @@ static inline void ble_operation_perform(ble_operation_t *operation)
         esp_ble_gattc_write_char_descr(g_gattc_if, operation->device->conn_id,
             operation->characteristic->client_config_handle, operation->len,
             operation->value,
-            ESP_GATT_WRITE_TYPE_NO_RSP, ESP_GATT_AUTH_REQ_NONE);
+            ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
         break;
     }
 }
