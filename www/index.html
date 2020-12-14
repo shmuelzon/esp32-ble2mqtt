@@ -1,0 +1,25 @@
+<html>
+  <head>
+    <title>BLE2MQTT</title>
+    <link rel="stylesheet" href="css/ble2mqtt.css">
+    <script language="javascript" src="js/jquery-3.5.1.min.js"></script>
+    <script language="javascript" src="js/ble2mqtt.js"></script>
+  </head>
+  <body>
+    <div class="heading">BLE2MQTT</div>
+    <div id="ota">
+      <div>
+        <div class="subheading">Firmware Update</div>
+        <input type="file" id="firmware-file">
+        <button id="firmware-upload" onclick="startUpload('firmware')">Upload</button>
+      </div>
+      <div>
+        <div class="subheading">Configuration Update</div>
+        <input type="file" id="configuration-file">
+        <button id="configuration-upload" onclick="startUpload('configuration')">Upload</button>
+      </div>
+        <div id="ota-status"></div>
+        <div class="spinner" id="ota-spinner"></div>
+    </div>
+  </body>
+</html>

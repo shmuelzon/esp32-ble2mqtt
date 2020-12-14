@@ -3,6 +3,7 @@
 #include "ble.h"
 #include "ble_utils.h"
 #include "eth.h"
+#include "httpd.h"
 #include "log.h"
 #include "mqtt.h"
 #include "ota.h"
@@ -112,6 +113,8 @@ static void ota_on_completed(ota_type_t type, ota_err_t err)
         ble_scan_start();
 }
 
+static void _ota_on_completed(ota_type_t type, ota_err_t err);
+
 static void ota_on_mqtt(const char *topic, const uint8_t *payload, size_t len,
     void *ctx)
 {
@@ -124,7 +127,7 @@ static void ota_on_mqtt(const char *topic, const uint8_t *payload, size_t len,
     ESP_LOGI(TAG, "Starting %s update from %s",
         type == OTA_TYPE_FIRMWARE ? "firmware" : "configuration", url);
 
-    if ((err = ota_start(type, url)) != OTA_ERR_SUCCESS)
+    if ((err = ota_download(type, url, _ota_on_completed)) != OTA_ERR_SUCCESS)
         ESP_LOGE(TAG, "Failed updating: %s", ota_err_to_str(err));
 
     ble_disconnect_all();
@@ -781,7 +784,6 @@ void app_main()
 
     /* Init OTA */
     ESP_ERROR_CHECK(ota_initialize());
-    ota_set_on_completed_cb(_ota_on_completed);
 
     /* Init Network */
     switch (config_network_type_get())
@@ -825,6 +827,10 @@ void app_main()
     ble_set_on_device_characteristic_value_cb(
         _ble_on_device_characteristic_value);
     ble_set_on_passkey_requested_cb(ble_on_passkey_requested);
+
+    /* Init web server */
+    ESP_ERROR_CHECK(httpd_initialize());
+    httpd_set_on_ota_completed_cb(_ota_on_completed);
 
     /* Start BLE2MQTT task */
     ESP_ERROR_CHECK(start_ble2mqtt_task());

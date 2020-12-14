@@ -22,21 +22,18 @@ typedef struct {
     char *(*version_get)(void);
 } ota_ops_t;
 
-/* Internal state */
-static struct {
+typedef struct {
     char *url;
+    ota_on_completed_cb_t on_completed_cb;
+} ota_download_ctx;
+
+/* Internal state */
+struct {
+    int in_progress;
     ota_ops_t *ops;
     size_t bytes_written;
     void *handle;
 } ota_ctx;
-
-/* Callback functions */
-static ota_on_completed_cb_t on_completed_cb = NULL;
-
-void ota_set_on_completed_cb(ota_on_completed_cb_t cb)
-{
-    on_completed_cb = cb;
-}
 
 char *ota_err_to_str(ota_err_t err)
 {
@@ -178,38 +175,27 @@ static int http_event_cb(esp_http_client_event_t *event)
     if (event->event_id != HTTP_EVENT_ON_DATA)
         return ESP_OK;
 
-    if (!ota_ctx.bytes_written)
-    {
-        if (ota_ctx.ops->begin(&ota_ctx.handle))
-            return ESP_FAIL;
-    }
-
-    if (ota_ctx.ops->write(ota_ctx.handle, event->data, event->data_len))
-    {
-        ESP_LOGE(TAG, "Failed writing data");
+    if (ota_write(event->data, event->data_len))
         return ESP_FAIL;
-    }
-    ota_ctx.bytes_written += event->data_len;
-    ESP_LOGI(TAG, "Wrote %d bytes (total: %d)", event->data_len,
-        ota_ctx.bytes_written);
 
     return ESP_OK;
 }
 
 static void ota_task(void *pvParameter)
 {
+    ota_download_ctx *ctx = (ota_download_ctx *)pvParameter;
     esp_http_client_handle_t handle;
     char header[128];
     int http_status = -1;
-    ota_err_t err = OTA_ERR_FAILED_DOWNLOAD;
+    ota_err_t err;
     esp_http_client_config_t config = {
         .event_handler = http_event_cb,
         .method = HTTP_METHOD_GET,
-        .url = ota_ctx.url,
+        .url = ctx->url,
         .buffer_size = 2048,
     };
 
-    ESP_LOGI(TAG, "Starting OTA from %s", ota_ctx.url);
+    ESP_LOGI(TAG, "Starting OTA from %s", ctx->url);
     handle = esp_http_client_init(&config);
 
     /* Set HTTP headers */
@@ -225,38 +211,83 @@ static void ota_task(void *pvParameter)
     ESP_LOGI(TAG, "HTTP request response: %d, read %d (%d) bytes", http_status,
         esp_http_client_get_content_length(handle), ota_ctx.bytes_written);
 
-    /* Call ops->end() only if we actually downloaded something */
-    if (http_status == 200 && ota_ctx.bytes_written > 0)
-    {
-        err = ota_ctx.ops->end(ota_ctx.handle) ?
-            OTA_ERR_FAILED_END : OTA_ERR_SUCCESS;
-    }
-    else if (http_status == 304)
-        err = OTA_ERR_NO_CHANGE;
+    err = ota_close();
+    if (http_status != 200 && http_status != 304)
+        err = OTA_ERR_FAILED_DOWNLOAD;
 
-    if (on_completed_cb)
-        on_completed_cb(ota_ctx.ops->type, err);
+    if (ctx->on_completed_cb)
+        ctx->on_completed_cb(ota_ctx.ops->type, err);
 
-    free(ota_ctx.url);
-    ota_ctx.url = NULL;
+    free(ctx->url);
+    free(ctx);
     esp_http_client_cleanup(handle);
     vTaskDelete(NULL);
 }
 
-int ota_start(ota_type_t type, const char *url)
+int ota_download(ota_type_t type, const char *url, ota_on_completed_cb_t cb)
 {
-    if (ota_ctx.url)
+    int ret;
+    ota_download_ctx *ctx;
+
+    if ((ret = ota_open(type)))
+        return ret;
+
+    ctx = malloc(sizeof(*ctx));
+    ctx->url = strdup(url);
+    ctx->on_completed_cb = cb;
+
+    xTaskCreatePinnedToCore(ota_task, "ota_task", 8192, ctx, 5, NULL, 1);
+
+    return 0;
+}
+
+ota_err_t ota_open(ota_type_t type)
+{
+    if (ota_ctx.in_progress)
         return OTA_ERR_IN_PROGRESS;
 
     ota_ctx.ops = type == OTA_TYPE_FIRMWARE ?
         &ota_firmware_ops : &ota_config_ops;
 
-    ota_ctx.url = strdup(url);
+    ota_ctx.in_progress = 1;
     ota_ctx.bytes_written = 0;
 
-    xTaskCreatePinnedToCore(ota_task, "ota_task", 8192, NULL, 5, NULL, 1);
+    return 0;
+}
+
+ota_err_t ota_write(uint8_t *data, size_t len)
+{
+    if (!ota_ctx.in_progress)
+        return OTA_ERR_FAILED_WRITE;
+
+    if (!ota_ctx.bytes_written)
+    {
+        if (ota_ctx.ops->begin(&ota_ctx.handle))
+            return OTA_ERR_FAILED_BEGIN;
+    }
+
+    if (ota_ctx.ops->write(ota_ctx.handle, data, len))
+    {
+        ESP_LOGE(TAG, "Failed writing data");
+        return OTA_ERR_FAILED_WRITE;
+    }
+    ota_ctx.bytes_written += len;
+    ESP_LOGI(TAG, "Wrote %d bytes (total: %d)", len, ota_ctx.bytes_written);
 
     return 0;
+}
+
+ota_err_t ota_close(void)
+{
+    if (!ota_ctx.in_progress)
+        return OTA_ERR_FAILED_END;
+
+    ota_ctx.in_progress = 0;
+
+    if (!ota_ctx.bytes_written)
+        return OTA_ERR_NO_CHANGE;
+    return ota_ctx.ops->end(ota_ctx.handle) ?
+        OTA_ERR_FAILED_END : OTA_ERR_SUCCESS;
 }
 
 int ota_initialize(void)

@@ -1,0 +1,19 @@
+#ifndef HTTPD_STATIC_FILES_H
+#define HTTPD_STATIC_FILES_H
+
+#include <stddef.h>
+#include <stdint.h>
+
+@static_files_declerations@
+typedef struct {
+    char *path;
+    const char *start;
+    const char *end;
+} httpd_static_file;
+
+static httpd_static_file httpd_static_files[] = {
+    { "/", index_html_start, index_html_end },
+    @static_files_list@{ NULL }
+};
+
+#endif

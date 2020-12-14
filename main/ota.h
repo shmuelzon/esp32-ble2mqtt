@@ -1,6 +1,9 @@
 #ifndef OTA_H
 #define OTA_H
 
+#include <stdint.h>
+#include <stddef.h>
+
 /* Types */
 typedef enum {
     OTA_TYPE_FIRMWARE,
@@ -20,11 +23,13 @@ typedef enum {
 /* Event callback types */
 typedef void (*ota_on_completed_cb_t)(ota_type_t type, ota_err_t err);
 
-/* Event handlers */
-void ota_set_on_completed_cb(ota_on_completed_cb_t cb);
+int ota_download(ota_type_t type, const char *url, ota_on_completed_cb_t cb);
+
+ota_err_t ota_open(ota_type_t type);
+ota_err_t ota_write(uint8_t *data, size_t len);
+ota_err_t ota_close(void);
 
 char *ota_err_to_str(ota_err_t err);
-int ota_start(ota_type_t type, const char *url);
 int ota_initialize(void);
 
 #endif
