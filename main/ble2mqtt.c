@@ -766,6 +766,8 @@ static void _ble_on_device_characteristic_value(mac_addr_t mac,
 
 void app_main()
 {
+    int config_failed;
+
     /* Initialize NVS */
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES) {
@@ -777,7 +779,7 @@ void app_main()
     ESP_LOGI(TAG, "Version: %s", BLE2MQTT_VER);
 
     /* Init configuration */
-    ESP_ERROR_CHECK(config_initialize());
+    config_failed = config_initialize();
 
     /* Init remote logging */
     ESP_ERROR_CHECK(log_initialize());
@@ -834,6 +836,13 @@ void app_main()
 
     /* Start BLE2MQTT task */
     ESP_ERROR_CHECK(start_ble2mqtt_task());
+
+    /* Failed to load configuration or it wasn't set, create access point */
+    if (config_failed || !strcmp(config_wifi_ssid_get() ? : "", "MY_SSID"))
+    {
+        wifi_start_ap(device_name_get(), NULL);
+        return;
+    }
 
     switch (config_network_type_get())
     {

@@ -114,6 +114,26 @@ eap_method_t wifi_eap_atomethod(const char *method)
     return p->method;
 }
 
+int wifi_start_ap(const char *ssid, const char *password)
+{
+    wifi_config_t wifi_config = { .ap = { .max_connection = 1 } };
+    strncpy((char *)wifi_config.ap.ssid, ssid, 32);
+    if (password)
+    {
+        strncpy((char *)wifi_config.sta.password, password, 64);
+        wifi_config.ap.authmode = WIFI_AUTH_WPA2_PSK;
+    }
+    else
+        wifi_config.ap.authmode = WIFI_AUTH_OPEN;
+
+    esp_netif_create_default_wifi_ap();
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
+    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_start());
+
+    return 0;
+}
+
 int wifi_connect(const char *ssid, const char *password,
     eap_method_t eap_method, const char *eap_identity,
     const char *eap_username, const char *eap_password,

@@ -21,6 +21,7 @@ void wifi_set_on_connected_cb(wifi_on_connected_cb_t cb);
 void wifi_set_on_disconnected_cb(wifi_on_disconnected_cb_t cb);
 
 int wifi_initialize(void);
+int wifi_start_ap(const char *ssid, const char *password);
 int wifi_connect(const char *ssid, const char *password,
     eap_method_t eap_method, const char *eap_identity,
     const char *eap_username, const char *eap_password,
