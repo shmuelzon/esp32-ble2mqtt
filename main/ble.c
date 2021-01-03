@@ -593,6 +593,9 @@ static void gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 
         break;
     }
+    case ESP_GAP_BLE_SEC_REQ_EVT:
+        esp_ble_gap_security_rsp(param->ble_security.ble_req.bd_addr, true);
+        break;
     case ESP_GAP_BLE_PASSKEY_REQ_EVT:
         esp_ble_passkey_reply(param->ble_security.ble_req.bd_addr, true,
             on_passkey_requested_cb ?
