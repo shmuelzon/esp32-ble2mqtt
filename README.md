@@ -61,8 +61,9 @@ is published.
 * For MiJia temperature and humidity sensors: `MACAddress`, `MessageCounter`,
   `Temperature`, `Humidity` and `BatteryLevel`
 * For BeeWi Smart Door sensors: `Status` and `Battery`
-* For Xiomi LYWSD03MMC Temperature Sensors: `MACAddress`, `MessageCounter`,
-  `Temperature`, `Humidity`, `BatteryLevel` and `BatteryVolts`
+* For Xiomi LYWSD03MMC Temperature Sensors running the ATC1441 firmware:
+  `MACAddress`, `MessageCounter`, `Temperature`, `Humidity`, `BatteryLevel` 
+  and `BatteryVolts` (_See https://github.com/atc1441/ATC_MiThermometer_)
 
 **Note:** Broadcaster topics are published without the retained flag regardless
 of what's defined in the configuration file.
