@@ -61,6 +61,8 @@ is published.
 * For MiJia temperature and humidity sensors: `MACAddress`, `MessageCounter`,
   `Temperature`, `Humidity` and `BatteryLevel`
 * For BeeWi Smart Door sensors: `Status` and `Battery`
+* For Xiomi LYWSD03MMC Temperature Sensors: `MACAddress`, `MessageCounter`,
+  `Temperature`, `Humidity`, `BatteryLevel` and `BatteryVolts`
 
 **Note:** Broadcaster topics are published without the retained flag regardless
 of what's defined in the configuration file.
