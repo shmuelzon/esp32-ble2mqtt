@@ -121,7 +121,8 @@ The `eth` section below includes the following entries:
 ```json
 {
   "eth": {
-    "phy": "MY_ETH_PHY"
+    "phy": "MY_ETH_PHY",
+    "phy_power_pin": -1
   }
 }
 ```
@@ -130,6 +131,7 @@ The `eth` section below includes the following entries:
   * `RTL8201`
   * `LAN8720`
   * `DP83848`
+* `phy_power_pin` - Some ESP32 Ethernet modules such as the Olimex ESP32-POE require a GPIO pin to be set high in order to enable the PHY. Omitting this configuration or setting it to -1 will disable this.
 
 _Note: Defining the `eth` section will disable WiFi_
 
@@ -299,3 +301,21 @@ image it's based on the git tag and for the configuration file it's an MD5 hash
 of its contents. In order to force an upgrade regardless of the currently
 installed version, run `idf.py force-upload` or `idf.py force-upload-config`
 respectively.
+
+## Board Compatibility
+The `sdkconfig.defaults` included in this project covers common configurations.
+
+### Olimex ESP32-POE
+A number of minor changes are required to support this board:
+* Set the `eth` section as follows:
+  ```
+  {
+    "eth": {
+      "phy": "LAN8720",
+      "phy_power_pin": 12
+    }
+  }
+  ```
+* Run `idf.py menuconfig` and modify the Ethernet configuration to:
+  * RMII_CLK_OUTPUT=y
+  * RMII_CLK_OUT_GPIO=17
