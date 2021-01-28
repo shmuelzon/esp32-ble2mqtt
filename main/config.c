@@ -217,15 +217,16 @@ const char *config_eth_phy_get(void)
     return NULL;
 }
 
-int8_t *config_eth_phy_power_pin_get(void)
+int8_t config_eth_phy_power_pin_get(void)
 {
     cJSON *eth = cJSON_GetObjectItemCaseSensitive(config, "eth");
-    cJSON *phy_power_pin = cJSON_GetObjectItemCaseSensitive(eth, "phy_power_pin");
+    cJSON *phy_power_pin = cJSON_GetObjectItemCaseSensitive(eth,
+        "phy_power_pin");
 
     if (cJSON_IsNumber(phy_power_pin))
-        return (int8_t) phy_power_pin->valuedouble;
+        return phy_power_pin->valuedouble;
 
-    return (int8_t) -1;
+    return -1;
 }
 
 /* MQTT Configuration*/

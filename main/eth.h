@@ -22,7 +22,7 @@ void eth_set_on_connected_cb(eth_on_connected_cb_t cb);
 void eth_set_on_disconnected_cb(eth_on_disconnected_cb_t cb);
 
 int eth_initialize(void);
-int eth_connect(eth_phy_t eth_phy);
+int eth_connect(eth_phy_t eth_phy, int8_t eth_phy_power_pin);
 uint8_t *eth_mac_get(void);
 void eth_hostname_set(const char *hostname);
 

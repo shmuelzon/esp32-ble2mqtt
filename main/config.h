@@ -22,7 +22,7 @@ uint32_t config_ble_passkey_get(const char *mac);
 
 /* Ethernet Configuration */
 const char *config_eth_phy_get(void);
-int8_t *config_eth_phy_power_pin_get(void);
+int8_t config_eth_phy_power_pin_get(void);
 
 /* MQTT Configuration*/
 const char *config_mqtt_host_get(void);
