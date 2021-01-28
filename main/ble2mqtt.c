@@ -20,7 +20,6 @@
 #include <freertos/task.h>
 #include <freertos/timers.h>
 #include <string.h>
-#include <driver/gpio.h>
 
 #define MAX_TOPIC_LEN 256
 static const char *TAG = "BLE2MQTT";
