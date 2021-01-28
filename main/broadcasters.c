@@ -491,7 +491,7 @@ static int atc1441_temp_hum_is_broadcaster(uint8_t *adv_data,
     atc1441_temp_hum_t *atc1441_data= (atc1441_temp_hum_t *)adv_data;
 
     if (len < 15 ||
-     le16toh(atc1441_data->service_uuid) != ATC1441_TEMP_HUM_SERVICE_UUID)
+        le16toh(atc1441_data->service_uuid) != ATC1441_TEMP_HUM_SERVICE_UUID)
     {
         return 0;
     }
@@ -510,14 +510,6 @@ static void atc1441_temp_hum_metadata_get(uint8_t *adv_data,
 
     cb("MACAddress", _mactoa(atc1441_data->mac), ctx);
 
-    // // Uncomment to include all information in a single message, helpful for
-    // //  decoding on client side if required.
-    // sprintf(s, "%X%X%X%X%X%X-%X%X-%X-%X-%X%X-%X", adv_data[4],adv_data[5],
-    //     adv_data[6],adv_data[7],adv_data[8], adv_data[9],adv_data[10],
-    //     adv_data[11],adv_data[12],adv_data[13],adv_data[14],
-    //     adv_data[15],adv_data[16] );
-    // cb("Raw", s, ctx);
-
     sprintf(s, "%hhu", atc1441_data->message_counter);
     cb("MessageCounter", s, ctx);
 
@@ -533,6 +525,7 @@ static void atc1441_temp_hum_metadata_get(uint8_t *adv_data,
     sprintf(s, "%.3f", be16toh(atc1441_data->battery_mv) / 1000.0 );
     cb("BatteryVolts", s, ctx);
 }
+
 static broadcaster_ops_t atc1441_temp_hum_ops = {
     .name = "ATC1441",
     .is_broadcaster = atc1441_temp_hum_is_broadcaster,
