@@ -104,7 +104,7 @@ eth_phy_t eth_phy_atophy(const char *phy)
     return p->phy;
 }
 
-int eth_connect(eth_phy_t eth_phy)
+int eth_connect(eth_phy_t eth_phy, int8_t eth_phy_power_pin)
 {
     esp_netif_config_t cfg = ESP_NETIF_DEFAULT_ETH();
     esp_netif_t *eth_netif = esp_netif_new(&cfg);
@@ -115,6 +115,14 @@ int eth_connect(eth_phy_t eth_phy)
     esp_eth_handle_t eth_handle = NULL;
 
     ESP_ERROR_CHECK(esp_eth_set_default_handlers(eth_netif));
+
+    if (eth_phy_power_pin >= 0)
+    {
+        gpio_pad_select_gpio(eth_phy_power_pin);
+        gpio_set_direction(eth_phy_power_pin, GPIO_MODE_OUTPUT);
+        gpio_set_level(eth_phy_power_pin, 1);
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
 
     switch (eth_phy)
     {
