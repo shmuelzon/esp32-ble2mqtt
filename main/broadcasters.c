@@ -464,12 +464,89 @@ static broadcaster_ops_t beewi_smart_door_ops = {
     .metadata_get = beewi_smart_door_metadata_get,
 };
 
+/* ATC1441 Firmware for the Xiaomi Thermometer LYWSD03MMC Temperature and
+ * Humidity Sensor, see: https://github.com/atc1441/ATC_MiThermometer */
+
+#define ATC1441_TEMP_HUM_SERVICE_UUID 0x181A
+
+typedef struct {
+    uint16_t not_used;
+    uint16_t service_uuid;
+    mac_addr_t mac;
+    int16_t temp;
+    uint8_t humid;
+    uint8_t battery_percent;
+    uint16_t battery_mv;
+    uint8_t message_counter;
+} __attribute__((packed)) atc1441_temp_hum_t;
+
+static atc1441_temp_hum_t *atc1441_temp_hum_data_get(uint8_t *adv_data,
+    uint8_t adv_data_len, uint8_t *atc1441_temp_hum_len)
+{
+    uint8_t len;
+    uint8_t *data = esp_ble_resolve_adv_data(adv_data,
+        ESP_BLE_AD_TYPE_SERVICE_DATA, &len);
+
+    if (atc1441_temp_hum_len)
+        *atc1441_temp_hum_len = len;
+
+    return (atc1441_temp_hum_t *)data;
+}
+static int atc1441_temp_hum_is_broadcaster(uint8_t *adv_data,
+    size_t adv_data_len)
+{
+    uint8_t len;
+    atc1441_temp_hum_t *atc1441_data = atc1441_temp_hum_data_get(adv_data,
+        adv_data_len, &len);
+
+    if (len < sizeof(atc1441_temp_hum_t) ||
+        le16toh(atc1441_data->service_uuid) != ATC1441_TEMP_HUM_SERVICE_UUID)
+    {
+        return 0;
+    }
+
+    return 1;
+}
+
+static void atc1441_temp_hum_metadata_get(uint8_t *adv_data,
+    size_t adv_data_len, int rssi, broadcaster_meta_data_cb_t cb, void *ctx)
+{
+    char s[32];
+    uint8_t len;
+    atc1441_temp_hum_t *atc1441_data = atc1441_temp_hum_data_get(adv_data,
+        adv_data_len, &len);
+
+    cb("MACAddress", _mactoa(atc1441_data->mac), ctx);
+
+    sprintf(s, "%hhu", atc1441_data->message_counter);
+    cb("MessageCounter", s, ctx);
+
+    sprintf(s, "%.1f", (int16_t)be16toh(atc1441_data->temp) / 10.0);
+    cb("Temperature", s, ctx);
+
+    sprintf(s, "%u", atc1441_data->humid);
+    cb("Humidity", s, ctx);
+
+    sprintf(s, "%u", atc1441_data->battery_percent);
+    cb("BatteryLevel", s, ctx);
+
+    sprintf(s, "%.3f", be16toh(atc1441_data->battery_mv) / 1000.0 );
+    cb("BatteryVolts", s, ctx);
+}
+
+static broadcaster_ops_t atc1441_temp_hum_ops = {
+    .name = "ATC1441",
+    .is_broadcaster = atc1441_temp_hum_is_broadcaster,
+    .metadata_get = atc1441_temp_hum_metadata_get,
+};
+
 /* Common */
 static broadcaster_ops_t *broadcaster_ops[] = {
     &ibeacon_ops,
     &eddystone_ops,
     &mijia_temp_hum_ops,
     &beewi_smart_door_ops,
+    &atc1441_temp_hum_ops,
     NULL
 };
 
