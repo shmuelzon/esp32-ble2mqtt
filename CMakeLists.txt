@@ -17,9 +17,15 @@ add_custom_target(check-project-python-requirements
     COMMAND ${python} $ENV{IDF_PATH}/tools/check_python_dependencies.py
         -r ${PROJECT_DIR}/requirements.txt)
 
+if(CMAKE_HOST_WIN32)
+    set(NULDEV NUL)
+else()
+    set(NULDEV /dev/null)
+endif()
+
 add_custom_target(validate-config
-    COMMAND ${python} -m json.tool ${PROJECT_DIR}/data/config.json 1>/dev/null
-        || (echo "Error: Invalid JSON in configuration file." && false ))
+    COMMAND ${python} -m json.tool ${PROJECT_DIR}/data/config.json >${NULDEV}
+        || (echo "Error: Invalid JSON in configuration file." && exit 1 ))
 
 add_custom_target(upload
     COMMAND ${python} ${PROJECT_DIR}/ota.py -f ${build_dir}/${PROJECT_BIN}
@@ -55,3 +61,7 @@ add_custom_target(remote-monitor
     DEPENDS validate-config
     USES_TERMINAL
     WORKING_DIRECTORY ${PROJECT_DIR})
+
+add_custom_target(image
+    COMMAND esptool.py --chip esp32 merge_bin -o image.bin @flash_project_args
+    DEPENDS app)
