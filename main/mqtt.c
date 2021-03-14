@@ -172,6 +172,32 @@ int mqtt_subscribe(const char *topic, int qos, mqtt_on_message_received_cb_t cb,
     return 0;
 }
 
+int mqtt_unsubscribe_topic_prefix(const char *topic_prefix)
+{
+    mqtt_subscription_t *tmp, **cur = &subscription_list;
+    size_t prefix_len = strlen(topic_prefix);
+
+    ESP_LOGD(TAG, "Unsubscribing topics with %s prefix", topic_prefix);
+
+    while (*cur)
+    {
+        tmp = *cur;
+        if (!strncmp(topic_prefix, (*cur)->topic, prefix_len))
+        {
+            cur = &(*cur)->next;
+            continue;
+        }
+        *cur = (*cur)->next;
+
+        ESP_LOGD(TAG, "Unsubscribing from %s", tmp->topic);
+        if (is_connected)
+            esp_mqtt_client_unsubscribe(mqtt_handle, tmp->topic);
+        mqtt_subscription_free(tmp);
+    }
+
+    return 0;
+}
+
 int mqtt_unsubscribe(const char *topic)
 {
     ESP_LOGD(TAG, "Unsubscribing from %s", topic);

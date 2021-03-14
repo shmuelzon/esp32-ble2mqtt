@@ -349,29 +349,15 @@ static char *ble_topic(mac_addr_t mac, ble_uuid_t service_uuid,
     return topic;
 }
 
-static void ble_on_characteristic_removed(mac_addr_t mac, ble_uuid_t service_uuid,
-    ble_uuid_t characteristic_uuid, uint8_t properties)
-{
-    char *topic = ble_topic(mac, service_uuid, characteristic_uuid);
-
-    if (properties & CHAR_PROP_READ)
-        mqtt_unsubscribe(ble_topic_suffix(topic, 1));
-
-    if (properties & CHAR_PROP_WRITE)
-        mqtt_unsubscribe(ble_topic_suffix(topic, 0));
-
-    if (properties & (CHAR_PROP_NOTIFY | CHAR_PROP_INDICATE))
-    {
-        ble_characteristic_notify_unregister(mac, service_uuid,
-            characteristic_uuid);
-    }
-}
-
 static void ble_on_device_disconnected(mac_addr_t mac)
 {
+    char topic[MAX_TOPIC_LEN];
+
     ESP_LOGI(TAG, "Disconnected from device: " MAC_FMT, MAC_PARAM(mac));
     ble_publish_connected(mac, 0);
-    ble_foreach_characteristic(mac, ble_on_characteristic_removed);
+    snprintf(topic, MAX_TOPIC_LEN, "%s" MAC_FMT "/",
+        config_mqtt_prefix_get(), MAC_PARAM(mac));
+    mqtt_unsubscribe_topic_prefix(topic);
 }
 
 static void ble_on_mqtt_get(const char *topic, const uint8_t *payload,

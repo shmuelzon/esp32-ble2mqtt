@@ -18,6 +18,7 @@ void mqtt_set_on_disconnected_cb(mqtt_on_disconnected_cb_t cb);
 /* Pub/Sub */
 int mqtt_subscribe(const char *topic, int qos, mqtt_on_message_received_cb_t cb,
     void *ctx, mqtt_free_ctx_cb_t free_cb);
+int mqtt_unsubscribe_topic_prefix(const char *topic_prefix);
 int mqtt_unsubscribe(const char *topic);
 int mqtt_publish(const char *topic, uint8_t *payload, size_t len, int qos,
     uint8_t retained);
