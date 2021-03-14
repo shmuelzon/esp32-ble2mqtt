@@ -135,19 +135,22 @@ static void ota_on_mqtt(const char *topic, const uint8_t *payload, size_t len,
     free(url);
 }
 
+static void _ota_on_mqtt(const char *topic, const uint8_t *payload, size_t len,
+    void *ctx);
+
 static void ota_subscribe(void)
 {
     char topic[27];
 
     /* Register for both a specific topic for this device and a general one */
     sprintf(topic, "%s/OTA/Firmware", device_name_get());
-    mqtt_subscribe(topic, 0, ota_on_mqtt, (void *)OTA_TYPE_FIRMWARE, NULL);
-    mqtt_subscribe("BLE2MQTT/OTA/Firmware", 0, ota_on_mqtt,
+    mqtt_subscribe(topic, 0, _ota_on_mqtt, (void *)OTA_TYPE_FIRMWARE, NULL);
+    mqtt_subscribe("BLE2MQTT/OTA/Firmware", 0, _ota_on_mqtt,
         (void *)OTA_TYPE_FIRMWARE, NULL);
 
     sprintf(topic, "%s/OTA/Config", device_name_get());
-    mqtt_subscribe(topic, 0, ota_on_mqtt, (void *)OTA_TYPE_CONFIG, NULL);
-    mqtt_subscribe("BLE2MQTT/OTA/Config", 0, ota_on_mqtt,
+    mqtt_subscribe(topic, 0, _ota_on_mqtt, (void *)OTA_TYPE_CONFIG, NULL);
+    mqtt_subscribe("BLE2MQTT/OTA/Config", 0, _ota_on_mqtt,
         (void *)OTA_TYPE_CONFIG, NULL);
 }
 
@@ -232,6 +235,9 @@ static void ble_on_mqtt_connected_cb(const char *topic, const uint8_t *payload,
         config_mqtt_retained_get());
 }
 
+static void _ble_on_mqtt_connected_cb(const char *topic, const uint8_t *payload,
+    size_t len, void *ctx);
+
 static void ble_publish_connected(mac_addr_t mac, uint8_t is_connected)
 {
     char topic[MAX_TOPIC_LEN];
@@ -249,7 +255,7 @@ static void ble_publish_connected(mac_addr_t mac, uint8_t is_connected)
     if (is_connected)
     {
         /* Subscribe for other devices claiming this device is disconnected */
-        mqtt_subscribe(topic, config_mqtt_qos_get(), ble_on_mqtt_connected_cb,
+        mqtt_subscribe(topic, config_mqtt_qos_get(), _ble_on_mqtt_connected_cb,
             strdup(mactoa(mac)), free);
         /* We are now the owner of this device */
         snprintf(topic, MAX_TOPIC_LEN, "%s" MAC_FMT "/Owner",
@@ -393,6 +399,11 @@ static void ble_on_mqtt_set(const char *topic, const uint8_t *payload,
     ble_characteristic_read(data->mac, data->service, data->characteristic);
 }
 
+static void _ble_on_mqtt_get(const char *topic, const uint8_t *payload,
+    size_t len, void *ctx);
+static void _ble_on_mqtt_set(const char *topic, const uint8_t *payload,
+    size_t len, void *ctx);
+
 static void ble_on_characteristic_found(mac_addr_t mac, ble_uuid_t service_uuid,
     ble_uuid_t characteristic_uuid, uint8_t properties)
 {
@@ -413,7 +424,7 @@ static void ble_on_characteristic_found(mac_addr_t mac, ble_uuid_t service_uuid,
     if (properties & CHAR_PROP_READ)
     {
         mqtt_subscribe(ble_topic_suffix(topic, 1), config_mqtt_qos_get(),
-            ble_on_mqtt_get, ble_ctx_gen(mac, service_uuid,
+            _ble_on_mqtt_get, ble_ctx_gen(mac, service_uuid,
             characteristic_uuid), free);
         ble_characteristic_read(mac, service_uuid, characteristic_uuid);
     }
@@ -422,7 +433,7 @@ static void ble_on_characteristic_found(mac_addr_t mac, ble_uuid_t service_uuid,
     if (properties & (CHAR_PROP_WRITE | CHAR_PROP_WRITE_NR))
     {
         mqtt_subscribe(ble_topic_suffix(topic, 0), config_mqtt_qos_get(),
-            ble_on_mqtt_set, ble_ctx_gen(mac, service_uuid,
+            _ble_on_mqtt_set, ble_ctx_gen(mac, service_uuid,
             characteristic_uuid), free);
     }
 
@@ -469,6 +480,7 @@ typedef enum {
     EVENT_TYPE_HEARTBEAT_TIMER,
     EVENT_TYPE_NETWORK_CONNECTED,
     EVENT_TYPE_NETWORK_DISCONNECTED,
+    EVENT_TYPE_OTA_MQTT,
     EVENT_TYPE_OTA_COMPLETED,
     EVENT_TYPE_MQTT_CONNECTED,
     EVENT_TYPE_MQTT_DISCONNECTED,
@@ -478,6 +490,9 @@ typedef enum {
     EVENT_TYPE_BLE_DEVICE_DISCONNECTED,
     EVENT_TYPE_BLE_DEVICE_SERVICES_DISCOVERED,
     EVENT_TYPE_BLE_DEVICE_CHARACTERISTIC_VALUE,
+    EVENT_TYPE_BLE_MQTT_CONNECTED,
+    EVENT_TYPE_BLE_MQTT_GET,
+    EVENT_TYPE_BLE_MQTT_SET,
 } event_type_t;
 
 typedef struct {
@@ -487,6 +502,12 @@ typedef struct {
             ota_type_t type;
             ota_err_t err;
         } ota_completed;
+        struct {
+            char *topic;
+            uint8_t *payload;
+            size_t len;
+            void *ctx;
+        } mqtt_message;
         struct {
             mac_addr_t mac;
             uint8_t *adv_data;
@@ -532,6 +553,12 @@ static void ble2mqtt_handle_event(event_t *event)
     case EVENT_TYPE_NETWORK_DISCONNECTED:
         network_on_disconnected();
         break;
+    case EVENT_TYPE_OTA_MQTT:
+        ota_on_mqtt(event->mqtt_message.topic, event->mqtt_message.payload,
+            event->mqtt_message.len, event->mqtt_message.ctx);
+        free(event->mqtt_message.topic);
+        free(event->mqtt_message.payload);
+        break;
     case EVENT_TYPE_OTA_COMPLETED:
         ota_on_completed(event->ota_completed.type, event->ota_completed.err);
         break;
@@ -571,6 +598,24 @@ static void ble2mqtt_handle_event(event_t *event)
             event->ble_device_characteristic_value.value,
             event->ble_device_characteristic_value.value_len);
         free(event->ble_device_characteristic_value.value);
+        break;
+    case EVENT_TYPE_BLE_MQTT_CONNECTED:
+        ble_on_mqtt_connected_cb(event->mqtt_message.topic, event->mqtt_message.payload,
+            event->mqtt_message.len, event->mqtt_message.ctx);
+        free(event->mqtt_message.topic);
+        free(event->mqtt_message.payload);
+        break;
+    case EVENT_TYPE_BLE_MQTT_GET:
+        ble_on_mqtt_get(event->mqtt_message.topic, event->mqtt_message.payload,
+            event->mqtt_message.len, event->mqtt_message.ctx);
+        free(event->mqtt_message.topic);
+        free(event->mqtt_message.payload);
+        break;
+    case EVENT_TYPE_BLE_MQTT_SET:
+        ble_on_mqtt_set(event->mqtt_message.topic, event->mqtt_message.payload,
+            event->mqtt_message.len, event->mqtt_message.ctx);
+        free(event->mqtt_message.topic);
+        free(event->mqtt_message.payload);
         break;
     }
 
@@ -623,6 +668,23 @@ static int start_ble2mqtt_task(void)
     return 0;
 }
 
+static void _mqtt_on_message(event_type_t type, const char *topic,
+    const uint8_t *payload, size_t len, void *ctx)
+{
+    event_t *event = malloc(sizeof(*event));
+
+    event->type = type;
+    event->mqtt_message.topic = strdup(topic);
+    event->mqtt_message.payload = malloc(len);
+    memcpy(event->mqtt_message.payload, payload, len);
+    event->mqtt_message.len = len;
+    event->mqtt_message.ctx = ctx;
+
+    ESP_LOGD(TAG, "Queuing event MQTT message %d (%s, %p, %u, %p)", type, topic,
+        payload, len, ctx);
+    xQueueSend(event_queue, &event, portMAX_DELAY);
+}
+
 static void _network_on_connected(void)
 {
     event_t *event = malloc(sizeof(*event));
@@ -641,6 +703,12 @@ static void _network_on_disconnected(void)
 
     ESP_LOGD(TAG, "Queuing event NETWORK_DISCONNECTED");
     xQueueSend(event_queue, &event, portMAX_DELAY);
+}
+
+static void _ota_on_mqtt(const char *topic, const uint8_t *payload, size_t len,
+    void *ctx)
+{
+    _mqtt_on_message(EVENT_TYPE_OTA_MQTT, topic, payload, len, ctx);
 }
 
 static void _ota_on_completed(ota_type_t type, ota_err_t err)
@@ -762,6 +830,24 @@ static void _ble_on_device_characteristic_value(mac_addr_t mac,
         UUID_FMT ", %p, %u)", MAC_PARAM(mac), UUID_PARAM(characteristic), value,
         value_len);
     xQueueSend(event_queue, &event, portMAX_DELAY);
+}
+
+static void _ble_on_mqtt_connected_cb(const char *topic, const uint8_t *payload,
+    size_t len, void *ctx)
+{
+    _mqtt_on_message(EVENT_TYPE_BLE_MQTT_CONNECTED, topic, payload, len, ctx);
+}
+
+static void _ble_on_mqtt_get(const char *topic, const uint8_t *payload,
+    size_t len, void *ctx)
+{
+    _mqtt_on_message(EVENT_TYPE_BLE_MQTT_GET, topic, payload, len, ctx);
+}
+
+static void _ble_on_mqtt_set(const char *topic, const uint8_t *payload,
+    size_t len, void *ctx)
+{
+    _mqtt_on_message(EVENT_TYPE_BLE_MQTT_SET, topic, payload, len, ctx);
 }
 
 void app_main()
