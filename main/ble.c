@@ -10,6 +10,7 @@
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/timers.h>
+#include <freertos/semphr.h>
 #include <endian.h>
 #include <string.h>
 
@@ -61,6 +62,7 @@ static esp_gatt_if_t g_gattc_if = ESP_GATT_IF_NONE;
 static ble_device_t *devices_list = NULL;
 static ble_operation_t *operation_queue = NULL;
 static TimerHandle_t purge_device_list_timer = NULL;
+static SemaphoreHandle_t devices_list_semaphore = NULL;
 
 /* Callback functions */
 static ble_on_broadcaster_discovered_cb_t on_broadcaster_discovered_cb = NULL;
@@ -267,14 +269,21 @@ int ble_scan_stop(void)
 
 int ble_connect(mac_addr_t mac)
 {
-    ble_device_t *dev = ble_device_find_by_mac(devices_list, mac);
+    ble_device_t *dev;
+    int ret = -1;
 
-    if (!dev)
-        return -1;
+    xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
+
+    if (!(dev = ble_device_find_by_mac(devices_list, mac)))
+        goto Exit;
 
     /* Stop scanning while attempting to connect */
     esp_ble_gap_stop_scanning();
-    return esp_ble_gattc_open(g_gattc_if, mac, dev->addr_type, true);
+    ret = esp_ble_gattc_open(g_gattc_if, mac, dev->addr_type, true);
+
+Exit:
+    xSemaphoreGiveRecursive(devices_list_semaphore);
+    return ret;
 }
 
 static int _ble_disconnect(ble_device_t *dev)
@@ -286,28 +295,48 @@ static int _ble_disconnect(ble_device_t *dev)
 
 int ble_disconnect(mac_addr_t mac)
 {
-    ble_device_t *dev = ble_device_find_by_mac(devices_list, mac);
+    ble_device_t *dev;
+    int ret = -1;
 
-    if (!dev)
-        return -1;
+    xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
 
-    return _ble_disconnect(dev);
+    if (!(dev = ble_device_find_by_mac(devices_list, mac)))
+        goto Exit;
+
+    ret = _ble_disconnect(dev);
+
+Exit:
+    xSemaphoreGiveRecursive(devices_list_semaphore);
+    return ret;
 }
 
 int ble_disconnect_all(void)
 {
+    xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
+
     ble_device_foreach(devices_list, _ble_disconnect);
+
+    xSemaphoreGiveRecursive(devices_list_semaphore);
     return 0;
 }
 
 int ble_services_scan(mac_addr_t mac)
 {
-    ble_device_t *dev = ble_device_find_by_mac(devices_list, mac);
+    ble_device_t *dev;
+    int ret;
 
-    if (!dev)
+    xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
+
+    if (!(dev = ble_device_find_by_mac(devices_list, mac)))
+    {
+        xSemaphoreGiveRecursive(devices_list_semaphore);
         return -1;
+    }
 
-    return esp_ble_gattc_search_service(g_gattc_if, dev->conn_id, NULL);
+    ret = esp_ble_gattc_search_service(g_gattc_if, dev->conn_id, NULL);
+
+    xSemaphoreGiveRecursive(devices_list_semaphore);
+    return ret;
 }
 
 static void esp_uuid_to_bt_uuid(esp_bt_uuid_t esp, ble_uuid_t bt)
@@ -379,12 +408,17 @@ static void ble_update_cache(ble_device_t *dev)
 int ble_foreach_characteristic(mac_addr_t mac,
     ble_on_device_characteristic_found_cb_t cb)
 {
-    ble_device_t *dev = ble_device_find_by_mac(devices_list, mac);
+    ble_device_t *dev;
     ble_service_t *service;
     ble_characteristic_t *characteristic;
 
-    if (!dev)
+    xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
+
+    if (!(dev = ble_device_find_by_mac(devices_list, mac)))
+    {
+        xSemaphoreGiveRecursive(devices_list_semaphore);
         return -1;
+    }
 
     /* If services list is empty, try to update it */
     if (!dev->services)
@@ -400,6 +434,7 @@ int ble_foreach_characteristic(mac_addr_t mac,
         }
     }
 
+    xSemaphoreGiveRecursive(devices_list_semaphore);
     return 0;
 }
 
@@ -409,26 +444,32 @@ int ble_characteristic_read(mac_addr_t mac, ble_uuid_t service_uuid,
     ble_device_t *device;
     ble_service_t *service;
     ble_characteristic_t *characteristic;
+    int ret = -1;
+
+    xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
 
     if (!(device = ble_device_find_by_mac(devices_list, mac)))
-        return -1;
+        goto Exit;
 
     if (!(service = ble_device_service_find(device, service_uuid)))
-        return -1;
+        goto Exit;
 
     if (!(characteristic = ble_device_characteristic_find_by_uuid(service,
         characteristic_uuid)))
     {
-        return -1;
+        goto Exit;
     }
 
     if (!(characteristic->properties & CHAR_PROP_READ))
-        return -1;
+        goto Exit;
 
     ble_operation_enqueue(&operation_queue, BLE_OPERATION_TYPE_READ, device,
         characteristic, 0, NULL);
 
-    return 0;
+    ret = 0;
+Exit:
+    xSemaphoreGiveRecursive(devices_list_semaphore);
+    return ret;
 }
 
 int ble_characteristic_write(mac_addr_t mac, ble_uuid_t service_uuid,
@@ -437,28 +478,34 @@ int ble_characteristic_write(mac_addr_t mac, ble_uuid_t service_uuid,
     ble_device_t *device;
     ble_service_t *service;
     ble_characteristic_t *characteristic;
+    int ret = -1;
+
+    xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
 
     if (!(device = ble_device_find_by_mac(devices_list, mac)))
-        return -1;
+        goto Exit;
 
     if (!(service = ble_device_service_find(device, service_uuid)))
-        return -1;
+        goto Exit;
 
     if (!(characteristic = ble_device_characteristic_find_by_uuid(service,
         characteristic_uuid)))
     {
-        return -1;
+        goto Exit;
     }
 
     if (!(characteristic->properties & (CHAR_PROP_WRITE | CHAR_PROP_WRITE_NR)))
-        return -1;
+        goto Exit;
 
     ble_operation_enqueue(&operation_queue,
         characteristic->properties & CHAR_PROP_WRITE ?
         BLE_OPERATION_TYPE_WRITE : BLE_OPERATION_TYPE_WRITE_NR, device,
         characteristic, value_len, value);
 
-    return 0;
+    ret = 0;
+Exit:
+    xSemaphoreGiveRecursive(devices_list_semaphore);
+    return ret;
 }
 
 int ble_characteristic_notify_register(mac_addr_t mac, ble_uuid_t service_uuid,
@@ -468,24 +515,27 @@ int ble_characteristic_notify_register(mac_addr_t mac, ble_uuid_t service_uuid,
     ble_device_t *device;
     ble_service_t *service;
     ble_characteristic_t *characteristic;
+    int ret = -1;
+
+    xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
 
     if (!(device = ble_device_find_by_mac(devices_list, mac)))
-        return -1;
+        goto Exit;
 
     if (!(service = ble_device_service_find(device, service_uuid)))
-        return -1;
+        goto Exit;
 
     if (!(characteristic = ble_device_characteristic_find_by_uuid(service,
         characteristic_uuid)))
     {
-        return -1;
+        goto Exit;
     }
 
     if (!(characteristic->properties & (CHAR_PROP_NOTIFY | CHAR_PROP_INDICATE)))
-        return -1;
+        goto Exit;
 
     if (characteristic->client_config_handle == 0)
-        return -1;
+        goto Exit;
 
     if (characteristic->properties & CHAR_PROP_INDICATE)
         enable = htole16(0x2);
@@ -495,13 +545,16 @@ int ble_characteristic_notify_register(mac_addr_t mac, ble_uuid_t service_uuid,
     {
         ESP_LOGE(TAG, "Failed registring for notification for char " UUID_FMT,
             UUID_PARAM(characteristic_uuid));
-        return -1;
+        goto Exit;
     }
 
     ble_operation_enqueue(&operation_queue, BLE_OPERATION_TYPE_WRITE_CHAR,
         device, characteristic, sizeof(enable), (uint8_t *)&enable);
 
-    return 0;
+    ret = 0;
+Exit:
+    xSemaphoreGiveRecursive(devices_list_semaphore);
+    return ret;
 }
 
 int ble_characteristic_notify_unregister(mac_addr_t mac,
@@ -510,21 +563,28 @@ int ble_characteristic_notify_unregister(mac_addr_t mac,
     ble_device_t *device;
     ble_service_t *service;
     ble_characteristic_t *characteristic;
+    int ret = -1;
+
+    xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
 
     if (!(device = ble_device_find_by_mac(devices_list, mac)))
-        return -1;
+        goto Exit;
 
     if (!(service = ble_device_service_find(device, service_uuid)))
-        return -1;
+        goto Exit;
 
     if (!(characteristic = ble_device_characteristic_find_by_uuid(service,
         characteristic_uuid)))
     {
-        return -1;
+        goto Exit;
     }
 
-    return esp_ble_gattc_unregister_for_notify(g_gattc_if, device->mac,
+    ret = esp_ble_gattc_unregister_for_notify(g_gattc_if, device->mac,
         characteristic->handle);
+
+Exit:
+    xSemaphoreGiveRecursive(devices_list_semaphore);
+    return ret;
 }
 
 static void gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
@@ -577,15 +637,22 @@ static void gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
                 param->scan_rst.rssi, broadcaster_ops);
         }
 
+        xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
+
         device = ble_device_find_by_mac(devices_list, param->scan_rst.bda);
 
         /* Device already discovered, nothing to do*/
         if (device)
+        {
+            xSemaphoreGiveRecursive(devices_list_semaphore);
             break;
+        }
 
         /* Cache device information */
         ble_device_add(&devices_list, param->scan_rst.bda,
             param->scan_rst.ble_addr_type, 0xffff);
+
+        xSemaphoreGiveRecursive(devices_list_semaphore);
 
         /* Notify app only on newly connected devices */
         if(on_device_discovered_cb)
@@ -603,11 +670,17 @@ static void gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
         break;
     case ESP_GAP_BLE_AUTH_CMPL_EVT:
     {
-        ble_device_t *device = ble_device_find_by_mac(devices_list,
-            param->ble_security.auth_cmpl.bd_addr);
+        ble_device_t *device;
 
-        if (device)
+        xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
+
+        if ((device = ble_device_find_by_mac(devices_list,
+            param->ble_security.auth_cmpl.bd_addr)))
+        {
             device->is_authenticating = 0;
+        }
+
+        xSemaphoreGiveRecursive(devices_list_semaphore);
 
         if (!param->ble_security.auth_cmpl.success)
         {
@@ -647,13 +720,17 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
         {
             ESP_LOGE(TAG, "Open failed, status = 0x%x", param->open.status);
             /* Remove device from cache */
+            xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
             ble_device_remove_by_mac(&devices_list, param->open.remote_bda);
+            xSemaphoreGiveRecursive(devices_list_semaphore);
             break;
         }
 
         /* Save device connection ID */
+        xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
         device = ble_device_find_by_mac(devices_list, param->open.remote_bda);
         device->conn_id = param->open.conn_id;
+        xSemaphoreGiveRecursive(devices_list_semaphore);
 
         /* Configure MTU */
         ESP_ERROR_CHECK(esp_ble_gattc_send_mtu_req(gattc_if,
@@ -671,7 +748,9 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
         ble_operation_remove_by_mac(&operation_queue, param->close.remote_bda);
 
         /* Remove device from cache */
+        xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
         ble_device_remove_by_mac(&devices_list, param->close.remote_bda);
+        xSemaphoreGiveRecursive(devices_list_semaphore);
         break;
     case ESP_GATTC_CFG_MTU_EVT:
         if (param->cfg_mtu.status != ESP_GATT_OK)
@@ -683,11 +762,17 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
         /* Notify app that the device is connected */
         if (on_device_connected_cb)
         {
-            ble_device_t *dev = ble_device_find_by_conn_id(devices_list,
-                param->cfg_mtu.conn_id);
+            ble_device_t *dev;
 
-            if (dev)
+            xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
+
+            if ((dev = ble_device_find_by_conn_id(devices_list,
+                param->cfg_mtu.conn_id)))
+            {
                 on_device_connected_cb(dev->mac);
+            }
+
+            xSemaphoreGiveRecursive(devices_list_semaphore);
         }
 
         break;
@@ -702,25 +787,36 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
         /* Notify app that the services were discovered */
         if (on_device_services_discovered_cb)
         {
-            ble_device_t *dev = ble_device_find_by_conn_id(devices_list,
-                param->search_cmpl.conn_id);
+            ble_device_t *dev;
 
-            if (dev)
+            xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
+
+            if ((dev = ble_device_find_by_conn_id(devices_list,
+                param->search_cmpl.conn_id)))
+            {
                 on_device_services_discovered_cb(dev->mac);
+            }
+
+            xSemaphoreGiveRecursive(devices_list_semaphore);
         }
 
         break;
     case ESP_GATTC_READ_CHAR_EVT:
     {
-        ble_device_t *device = ble_device_find_by_conn_id(devices_list,
-            param->read.conn_id);
+        ble_device_t *device;
         ble_service_t *service;
         ble_characteristic_t *characteristic;
 
         need_dequeue = 1;
 
-        if (!device)
+        xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
+
+        if (!(device = ble_device_find_by_conn_id(devices_list,
+            param->read.conn_id)))
+        {
+            xSemaphoreGiveRecursive(devices_list_semaphore);
             break;
+        }
 
         if (param->read.status != ESP_GATT_OK)
         {
@@ -753,6 +849,7 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
                 characteristic->uuid, param->read.value, param->read.value_len);
         }
 
+        xSemaphoreGiveRecursive(devices_list_semaphore);
         break;
     }
     case ESP_GATTC_WRITE_CHAR_EVT:
@@ -784,6 +881,8 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
         ble_service_t *service;
         ble_characteristic_t *characteristic;
 
+        xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
+
         if (!ble_device_info_get_by_conn_id_handle(devices_list,
             param->notify.conn_id, param->notify.handle, &device, &service,
             &characteristic) && on_device_characteristic_value_cb)
@@ -793,6 +892,7 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
                 param->notify.value_len);
         }
 
+        xSemaphoreGiveRecursive(devices_list_semaphore);
         break;
     }
     default:
@@ -807,7 +907,9 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
 static void ble_purge_device_list_timer_cb(TimerHandle_t xTimer)
 {
     ESP_LOGD(TAG, "Purging non-connected devices");
+    xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
     ble_device_remove_disconnected(&devices_list);
+    xSemaphoreGiveRecursive(devices_list_semaphore);
 }
 
 int ble_initialize(void)
@@ -837,6 +939,9 @@ int ble_initialize(void)
     {
         return -1;
     }
+
+    if (!(devices_list_semaphore = xSemaphoreCreateRecursiveMutex()))
+        return -1;
 
     xTimerStart(purge_device_list_timer, 0);
 
