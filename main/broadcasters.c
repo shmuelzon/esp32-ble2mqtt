@@ -142,7 +142,7 @@ typedef struct {
         eddystone_url_t url;
         eddystone_tlm_t tlm;
     } u;
-} eddystone_t;
+} __attribute__((packed)) eddystone_t;
 
 static eddystone_t *eddystone_data_get(uint8_t *adv_data, uint8_t adv_data_len,
     uint8_t *eddystone_len)
@@ -218,25 +218,27 @@ static char *eddystone_url_scheme_get(uint8_t url_scheme)
 
 static char *eddystone_url_get(char url)
 {
-    static char c;
+    static char c[2] = {0};
 
-    c = url;
-    if (c == 0) return ".com/";
-    if (c == 1) return ".org/";
-    if (c == 2) return ".edu/";
-    if (c == 3) return ".net/";
-    if (c == 4) return ".info/";
-    if (c == 5) return ".biz/";
-    if (c == 6) return ".gov/";
-    if (c == 7) return ".com";
-    if (c == 8) return ".org";
-    if (c == 9) return ".edu";
-    if (c == 10) return ".net";
-    if (c == 11) return ".info";
-    if (c == 12) return ".biz";
-    if (c == 13) return ".gov";
-    if (c > 32 && c < 127)
-        return &c;
+    if (url == 0) return ".com/";
+    if (url == 1) return ".org/";
+    if (url == 2) return ".edu/";
+    if (url == 3) return ".net/";
+    if (url == 4) return ".info/";
+    if (url == 5) return ".biz/";
+    if (url == 6) return ".gov/";
+    if (url == 7) return ".com";
+    if (url == 8) return ".org";
+    if (url == 9) return ".edu";
+    if (url == 10) return ".net";
+    if (url == 11) return ".info";
+    if (url == 12) return ".biz";
+    if (url == 13) return ".gov";
+    if (url > 32 && url < 127)
+    {
+        *c = url;
+        return c;
+    }
 
     ESP_LOGE(TAG, "Unsupported URL character: 0x%0x", url);
     return "";
