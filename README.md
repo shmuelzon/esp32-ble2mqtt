@@ -58,10 +58,11 @@ is published.
   * `UID` frames: `Namespace`, `Instance` and `Distance`
   * `URL` frames: `URL` and `Distance`
   * `TLM` frames: `Voltage`, `Temperature`, `Count` and `Uptime`
-* For MiJia temperature and humidity sensors: `MACAddress`, `MessageCounter`,
-  `Temperature`, `Humidity` and `BatteryLevel`
+* For Xiaomi Mijia (MiBeacon) sensors: `MACAddress`, `MessageCounter`,
+  `Temperature`, `Humidity`, `Moisture`, `Formaldehyde`, `Illuminance`,
+  `Conductivity`, `Switch`, `Consumable`, `BatteryLevel`
 * For BeeWi Smart Door sensors: `Status` and `Battery`
-* For Xiomi LYWSD03MMC Temperature Sensors running the ATC1441 firmware:
+* For Xiaomi LYWSD03MMC Temperature Sensors running the ATC1441 firmware:
   `MACAddress`, `MessageCounter`, `Temperature`, `Humidity`, `BatteryLevel` 
   and `BatteryVolts` (_See https://github.com/atc1441/ATC_MiThermometer_)
 
