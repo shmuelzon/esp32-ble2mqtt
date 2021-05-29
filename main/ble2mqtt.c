@@ -33,7 +33,6 @@ typedef struct {
 static char *device_name_get(void)
 {
     static char name[14] = {};
-
     if (!*name)
     {
         uint8_t *mac = NULL;
@@ -43,6 +42,11 @@ static char *device_name_get(void)
             mac = eth_mac_get();
             break;
         case NETWORK_TYPE_WIFI:
+            if (config_wifi_hostname_get() != NULL)
+            {
+                sprintf(name, config_wifi_hostname_get());
+                return name;
+            }
             mac = wifi_mac_get();
             break;
         }

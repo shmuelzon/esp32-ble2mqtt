@@ -382,6 +382,17 @@ config_network_type_t config_network_type_get(void)
 }
 
 /* WiFi Configuration */
+const char *config_wifi_hostname_get(void)
+{
+    cJSON *wifi = cJSON_GetObjectItemCaseSensitive(config, "wifi");
+    cJSON *ssid = cJSON_GetObjectItemCaseSensitive(wifi, "hostname");
+
+    if (cJSON_IsString(ssid))
+        return ssid->valuestring;
+
+    return NULL;
+}
+
 const char *config_wifi_ssid_get(void)
 {
     cJSON *wifi = cJSON_GetObjectItemCaseSensitive(config, "wifi");

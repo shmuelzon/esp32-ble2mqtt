@@ -89,7 +89,7 @@ To receive these logs on your host, execute `idf.py remote-monitor`.
 ## Configuration
 
 The configuration file provided in located at
-[data/config.json](data/config.json) in the repository. It contains all of the
+[data/config.json.sample](data/config.json.sample) in the repository. It contains all of the
 different configuration options.
 
 The `wifi` section below includes the following entries:
@@ -98,6 +98,7 @@ The `wifi` section below includes the following entries:
   "wifi": {
     "ssid": "MY_SSID",
     "password": "MY_PASSWORD",
+    "hostname": "MY_HOSTNAME",
     "eap": {
       "method": null,
       "identity": null,
@@ -112,6 +113,7 @@ The `wifi` section below includes the following entries:
 ```
 * `ssid` - The WiFi SSID the ESP32 should connect to
 * `password` - The security password for the above network
+* `hostname` - The hostname to register with on the WiFi network.
 * `eap` - WPA-Enterprise configuration (for enterprise networks only)
   * `method` - `TLS`, `PEAP` or `TTLS`
   * `identity` - The EAP identity
