@@ -92,8 +92,9 @@ The configuration file provided in located at
 [data/config.json](data/config.json) in the repository. It contains all of the
 different configuration options.
 
-The `network` section contains either a `wifi` section or a `eth` section. If
-there is an `eth` section this has preference over the `wifi` section.
+The `network` section should contain either a `wifi` section or an `eth`
+section. If case there are both, the `eth` section has preference over the
+`wifi` section.
 
 The `wifi` section below includes the following entries:
 ```json
