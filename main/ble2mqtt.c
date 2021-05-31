@@ -43,10 +43,7 @@ static char *device_name_get(void)
             break;
         case NETWORK_TYPE_WIFI:
             if (config_wifi_hostname_get() != NULL)
-            {
-                sprintf(name, config_wifi_hostname_get());
-                return name;
-            }
+                return config_wifi_hostname_get();
             mac = wifi_mac_get();
             break;
         }
