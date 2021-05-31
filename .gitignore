@@ -6,9 +6,6 @@ sdkconfig
 sdkconfig.old
 log.txt
 
-# Project config
-data/config.json
-
 # General
 *.swp
 *.swo
