@@ -42,8 +42,8 @@ static char *device_name_get(void)
             mac = eth_mac_get();
             break;
         case NETWORK_TYPE_WIFI:
-            if (config_wifi_hostname_get() != NULL)
-                return config_wifi_hostname_get();
+            if (config_network_wifi_hostname_get() != NULL)
+                return config_network_wifi_hostname_get();
             mac = wifi_mac_get();
             break;
         }
@@ -911,7 +911,7 @@ void app_main()
     ESP_ERROR_CHECK(start_ble2mqtt_task());
 
     /* Failed to load configuration or it wasn't set, create access point */
-    if (config_failed || !strcmp(config_wifi_ssid_get() ? : "", "MY_SSID"))
+    if (config_failed || !strcmp(config_network_wifi_ssid_get() ? : "", "MY_SSID"))
     {
         wifi_start_ap(device_name_get(), NULL);
         return;
@@ -920,12 +920,12 @@ void app_main()
     switch (config_network_type_get())
     {
     case NETWORK_TYPE_ETH:
-        eth_connect(eth_phy_atophy(config_eth_phy_get()),
-            config_eth_phy_power_pin_get());
+        eth_connect(eth_phy_atophy(config_network_eth_phy_get()),
+            config_network_eth_phy_power_pin_get());
         break;
     case NETWORK_TYPE_WIFI:
         /* Start by connecting to network */
-        wifi_connect(config_wifi_ssid_get(), config_wifi_password_get(),
+        wifi_connect(config_network_wifi_ssid_get(), config_network_wifi_password_get(),
             wifi_eap_atomethod(config_eap_method_get()),
             config_eap_identity_get(),
             config_eap_username_get(), config_eap_password_get(),

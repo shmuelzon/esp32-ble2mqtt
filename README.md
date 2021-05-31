@@ -92,21 +92,26 @@ The configuration file provided in located at
 [data/config.json](data/config.json) in the repository. It contains all of the
 different configuration options.
 
+The `network` section contains either a `wifi` section or a `eth` section. If
+there is an `eth` section this has preference over the `wifi` section.
+
 The `wifi` section below includes the following entries:
 ```json
 {
-  "wifi": {
-    "ssid": "MY_SSID",
-    "password": "MY_PASSWORD",
-    "hostname": "MY_HOSTNAME",
-    "eap": {
-      "method": null,
-      "identity": null,
-      "client_cert": null,
-      "client_key": null,
-      "server_cert": null,
-      "username": null,
-      "password": null
+  "network": {
+    "wifi": {
+      "ssid": "MY_SSID",
+      "password": "MY_PASSWORD",
+      "hostname": "MY_HOSTNAME",
+      "eap": {
+        "method": null,
+        "identity": null,
+        "client_cert": null,
+        "client_key": null,
+        "server_cert": null,
+        "username": null,
+        "password": null
+      }
     }
   }
 }
@@ -125,9 +130,11 @@ The `wifi` section below includes the following entries:
 The `eth` section below includes the following entries:
 ```json
 {
-  "eth": {
-    "phy": "MY_ETH_PHY",
-    "phy_power_pin": -1
+  "network": {
+    "eth": {
+      "phy": "MY_ETH_PHY",
+      "phy_power_pin": -1
+    }
   }
 }
 ```
@@ -313,11 +320,13 @@ The `sdkconfig.defaults` included in this project covers common configurations.
 ### Olimex ESP32-POE
 A number of minor changes are required to support this board:
 * Set the `eth` section as follows:
-  ```
+  ```json
   {
-    "eth": {
-      "phy": "LAN8720",
-      "phy_power_pin": 12
+    "network": {
+      "eth": {
+        "phy": "LAN8720",
+        "phy_power_pin": 12
+      }
     }
   }
   ```
