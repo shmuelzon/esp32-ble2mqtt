@@ -6,6 +6,9 @@ sdkconfig
 sdkconfig.old
 log.txt
 
+# Config file
+data/config.json
+
 # General
 *.swp
 *.swo
