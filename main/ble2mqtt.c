@@ -118,12 +118,12 @@ static void _ota_on_completed(ota_type_t type, ota_err_t err);
 static void ota_on_mqtt(const char *topic, const uint8_t *payload, size_t len,
     void *ctx)
 {
-    char *url = malloc(len + 1);
+    char *url = malloc(len + sizeof(char));
     ota_type_t type = (ota_type_t)ctx;
     ota_err_t err;
 
     memcpy(url, payload, len);
-    url[len] = '\0';
+    url[len + sizeof(char)] = '\0';
     ESP_LOGI(TAG, "Starting %s update from %s",
         type == OTA_TYPE_FIRMWARE ? "firmware" : "configuration", url);
 
