@@ -1,5 +1,6 @@
 #include "mqtt.h"
 #include "resolve.h"
+#include "driver/gpio.h"
 #include <esp_err.h>
 #include <esp_log.h>
 #include <mqtt_client.h>
@@ -7,6 +8,8 @@
 
 /* Constants */
 static const char *TAG = "MQTT";
+
+#define MQTT_LED 2
 
 /* Types */
 typedef struct mqtt_subscription_t {
@@ -209,11 +212,30 @@ int mqtt_unsubscribe(const char *topic)
     return esp_mqtt_client_unsubscribe(mqtt_handle, topic);
 }
 
+void mqtt_led_on()
+{
+    gpio_set_direction(MQTT_LED, GPIO_MODE_OUTPUT);
+    gpio_set_level(MQTT_LED, 1);
+}
+
+void mqtt_led_blink()
+{
+    gpio_set_level(MQTT_LED, 0);
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+    gpio_set_level(MQTT_LED, 1);
+}
+
+void mqtt_led_off()
+{
+    gpio_set_level(MQTT_LED, 0);
+}
+
 int mqtt_publish(const char *topic, uint8_t *payload, size_t len, int qos,
     uint8_t retained)
 {
     if (is_connected)
     {
+        mqtt_led_blink();
         return esp_mqtt_client_publish(mqtt_handle, (char *)topic,
             (char *)payload, len, qos, retained) < 0;
     }
@@ -244,6 +266,7 @@ static void mqtt_message_cb(const char *topic, size_t topic_len,
         }
 
         cur->cb(cur->topic, payload, len, cur->ctx);
+        mqtt_led_blink();
     }
 }
 
@@ -253,6 +276,7 @@ static esp_err_t mqtt_event_cb(esp_mqtt_event_handle_t event)
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT client connected");
         is_connected = 1;
+        mqtt_led_on();
         mqtt_publications_publish(publications_list);
         mqtt_publications_free(&publications_list);
         if (on_connected_cb)
@@ -264,6 +288,7 @@ static esp_err_t mqtt_event_cb(esp_mqtt_event_handle_t event)
         mqtt_subscriptions_free(&subscription_list);
         if (on_disconnected_cb)
             on_disconnected_cb();
+        mqtt_led_off();
         break;
     case MQTT_EVENT_DATA:
         mqtt_message_cb(event->topic, event->topic_len, (uint8_t *)event->data,
