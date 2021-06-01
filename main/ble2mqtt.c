@@ -3,6 +3,7 @@
 #include "ble.h"
 #include "ble_utils.h"
 #include "eth.h"
+#include "gpio_control.h"
 #include "httpd.h"
 #include "log.h"
 #include "mqtt.h"
@@ -167,11 +168,30 @@ static void ota_unsubscribe(void)
     mqtt_unsubscribe("BLE2MQTT/OTA/Config");
 }
 
+static void _mqtt_on_gpio_control(const char *topic, const uint8_t *payload, size_t len, void *ctx);
+
+static void gpio_control_subscribe(void)
+{
+    char topic[26];
+
+    sprintf(topic, "%s/GpioControl", device_name_get());
+    mqtt_subscribe(topic, 0, _mqtt_on_gpio_control, (void *)OTA_TYPE_FIRMWARE, NULL);
+}
+
+static void gpio_control_unsubscribe(void)
+{
+    char topic[26];
+
+    sprintf(topic, "%s/GpioControl", device_name_get());
+    mqtt_unsubscribe(topic);
+}
+
 static void cleanup(void)
 {
     ble_disconnect_all();
     ble_scan_stop();
     ota_unsubscribe();
+    gpio_control_unsubscribe();
 }
 
 /* Network callback functions */
@@ -201,6 +221,7 @@ static void mqtt_on_connected(void)
     ESP_LOGI(TAG, "Connected to MQTT, scanning for BLE devices");
     self_publish();
     ota_subscribe();
+    gpio_control_subscribe();
     ble_scan_start();
 }
 
@@ -461,6 +482,15 @@ static uint32_t ble_on_passkey_requested(mac_addr_t mac)
     return passkey;
 }
 
+static void mqtt_on_gpio_control(const char *topic, const uint8_t *payload, size_t len, void *ctx)
+{
+    char *msg = malloc(len + sizeof(char));
+    memcpy(msg, payload, len);
+    msg[len] = '\0';
+    gpio_control_handle(msg);
+    free(msg);
+}
+
 /* BLE2MQTT Task and event callbacks */
 typedef enum {
     EVENT_TYPE_HEARTBEAT_TIMER,
@@ -479,6 +509,7 @@ typedef enum {
     EVENT_TYPE_BLE_MQTT_CONNECTED,
     EVENT_TYPE_BLE_MQTT_GET,
     EVENT_TYPE_BLE_MQTT_SET,
+    EVENT_TYPE_MQTT_GPIO_CONTROL,
 } event_type_t;
 
 typedef struct {
@@ -599,6 +630,12 @@ static void ble2mqtt_handle_event(event_t *event)
         break;
     case EVENT_TYPE_BLE_MQTT_SET:
         ble_on_mqtt_set(event->mqtt_message.topic, event->mqtt_message.payload,
+            event->mqtt_message.len, event->mqtt_message.ctx);
+        free(event->mqtt_message.topic);
+        free(event->mqtt_message.payload);
+        break;
+    case EVENT_TYPE_MQTT_GPIO_CONTROL:
+        mqtt_on_gpio_control(event->mqtt_message.topic, event->mqtt_message.payload,
             event->mqtt_message.len, event->mqtt_message.ctx);
         free(event->mqtt_message.topic);
         free(event->mqtt_message.payload);
@@ -834,6 +871,11 @@ static void _ble_on_mqtt_set(const char *topic, const uint8_t *payload,
     size_t len, void *ctx)
 {
     _mqtt_on_message(EVENT_TYPE_BLE_MQTT_SET, topic, payload, len, ctx);
+}
+
+static void _mqtt_on_gpio_control(const char *topic, const uint8_t *payload, size_t len, void *ctx)
+{
+    _mqtt_on_message(EVENT_TYPE_MQTT_GPIO_CONTROL, topic, payload, len, ctx);
 }
 
 void app_main()

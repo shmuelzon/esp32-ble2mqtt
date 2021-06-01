@@ -285,6 +285,27 @@ The optional `log` section below includes the following entries:
   address, this may be a unicast, broadcast or multicast address
 * `port` - The destination UDP port
 
+## GPIO control
+Although it is not something this project was originally setup to do, controlling
+GPIO pins via MQTT has been added as a bonus feature. In order to use this, no
+additional configuration is required.
+
+The ESP32 will subscribe to `BLE2MQTT-XXX/GpioControl` and listen for incomming
+messages. They have the mandatory fields `pin` and `state` and optionally `delay`.
+
+```json
+{
+  "pin": 25,
+  "state": -1,
+  "delay": 100
+}
+```
+* `pin` - The GPIO pin to change state for, checks are in place to ensure it is
+  an output pin.
+* `state` - Either `0` (off/low), `1` (on/high) or `-1` (simulate press)
+* `delay` - In case `state` equals `-1`; the delay to wait before setting the pin
+  to low. By default this is 400ms.
+
 ## OTA
 
 It is possible to upgrade both firmware and configuration file over-the-air once
