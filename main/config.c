@@ -385,11 +385,10 @@ config_network_type_t config_network_type_get(void)
 }
 
 /* WiFi Configuration */
-const char *config_network_wifi_hostname_get(void)
+const char *config_network_hostname_get(void)
 {
     cJSON *network = cJSON_GetObjectItemCaseSensitive(config, "network");
-    cJSON *wifi = cJSON_GetObjectItemCaseSensitive(network, "wifi");
-    cJSON *ssid = cJSON_GetObjectItemCaseSensitive(wifi, "hostname");
+    cJSON *ssid = cJSON_GetObjectItemCaseSensitive(network, "hostname");
 
     if (cJSON_IsString(ssid))
         return ssid->valuestring;

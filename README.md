@@ -93,17 +93,21 @@ The configuration file provided in located at
 different configuration options.
 
 The `network` section should contain either a `wifi` section or an `eth`
-section. If case there are both, the `eth` section has preference over the
+section.  If case there are both, the `eth` section has preference over the
 `wifi` section.
+
+Optionally, the network section can contain a `hostname` which, if set,
+is used in MQTT subscriptions as well. In such case, relace `BLE2MQTT-XXX` in
+this documentation with the hostname you have set.
 
 The `wifi` section below includes the following entries:
 ```json
 {
   "network": {
+    "hostname": "MY_HOSTNAME",
     "wifi": {
       "ssid": "MY_SSID",
       "password": "MY_PASSWORD",
-      "hostname": "MY_HOSTNAME",
       "eap": {
         "method": null,
         "identity": null,
@@ -119,7 +123,6 @@ The `wifi` section below includes the following entries:
 ```
 * `ssid` - The WiFi SSID the ESP32 should connect to
 * `password` - The security password for the above network
-* `hostname` - The hostname to register with on the WiFi network.
 * `eap` - WPA-Enterprise configuration (for enterprise networks only)
   * `method` - `TLS`, `PEAP` or `TTLS`
   * `identity` - The EAP identity

@@ -44,7 +44,7 @@ const char *config_mqtt_set_suffix_get(void);
 config_network_type_t config_network_type_get(void);
 
 /* WiFi Configuration*/
-const char *config_network_wifi_hostname_get(void);
+const char *config_network_hostname_get(void);
 const char *config_network_wifi_ssid_get(void);
 const char *config_network_wifi_password_get(void);
 const char *config_eap_ca_cert_get(void);

@@ -32,23 +32,26 @@ typedef struct {
 
 static char *device_name_get(void)
 {
-    static char name[14] = {};
-    if (!*name)
+    static char *name = NULL;
+    uint8_t *mac = NULL;
+
+    if (name)
+        return name;
+
+    if ((name = config_network_hostname_get()))
+        return name;
+
+    switch (config_network_type_get())
     {
-        uint8_t *mac = NULL;
-        switch (config_network_type_get())
-        {
-        case NETWORK_TYPE_ETH:
-            mac = eth_mac_get();
-            break;
-        case NETWORK_TYPE_WIFI:
-            if (config_network_wifi_hostname_get() != NULL)
-                return config_network_wifi_hostname_get();
-            mac = wifi_mac_get();
-            break;
-        }
-        sprintf(name, "BLE2MQTT-%02X%02X", mac[4], mac[5]);
+    case NETWORK_TYPE_ETH:
+        mac = eth_mac_get();
+        break;
+    case NETWORK_TYPE_WIFI:
+        mac = wifi_mac_get();
+        break;
     }
+    name = malloc(14);
+    sprintf(name, "BLE2MQTT-%02X%02X", mac[4], mac[5]);
 
     return name;
 }
