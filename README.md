@@ -88,9 +88,9 @@ To receive these logs on your host, execute `idf.py remote-monitor`.
 
 ## Configuration
 
-The configuration file provided in located at
-[data/config.json.sample](data/config.json.sample) in the repository is a
-sample configuration with a minimal configuration. For the other configuration
+A sample (minimal) configuration file is located at
+[data/config.json.sample](data/config.json.sample) in the repository. It should
+be copied to the data folder and modified as needed. For the other configuration
 options pleaes refer to below documentation.
 
 The `wifi` section below includes the following entries:
