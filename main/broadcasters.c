@@ -282,9 +282,12 @@ static void eddystone_metadata_get(uint8_t *adv_data, size_t adv_data_len,
     {
         if (eddystone->u.tlm.version == 0)
         {
+            uint16_t temp = be16toh(eddystone->u.tlm.temp);
+
             sprintf(s, "%d", be16toh(eddystone->u.tlm.vbatt));
             cb("Voltage", s, ctx);
-            sprintf(s, "%.2f", be16toh(eddystone->u.tlm.temp) / 256.0);
+            sprintf(s, "%d.%02ld", (int8_t)(temp >> 8),
+                lround((temp & 0xff) * 100 / 256.0));
             cb("Temperature", s, ctx);
             sprintf(s, "%u", be32toh(eddystone->u.tlm.adv_cnt));
             cb("Count", s, ctx);
