@@ -21,8 +21,8 @@ uint8_t config_ble_should_connect(const char *mac);
 uint32_t config_ble_passkey_get(const char *mac);
 
 /* Ethernet Configuration */
-const char *config_eth_phy_get(void);
-int8_t config_eth_phy_power_pin_get(void);
+const char *config_network_eth_phy_get(void);
+int8_t config_network_eth_phy_power_pin_get(void);
 
 /* MQTT Configuration*/
 const char *config_mqtt_host_get(void);
@@ -44,8 +44,9 @@ const char *config_mqtt_set_suffix_get(void);
 config_network_type_t config_network_type_get(void);
 
 /* WiFi Configuration*/
-const char *config_wifi_ssid_get(void);
-const char *config_wifi_password_get(void);
+const char *config_network_hostname_get(void);
+const char *config_network_wifi_ssid_get(void);
+const char *config_network_wifi_password_get(void);
 const char *config_eap_ca_cert_get(void);
 const char *config_eap_client_cert_get(void);
 const char *config_eap_client_key_get(void);

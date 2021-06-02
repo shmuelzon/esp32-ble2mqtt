@@ -92,20 +92,31 @@ The configuration file provided in located at
 [data/config.json](data/config.json) in the repository. It contains all of the
 different configuration options.
 
+The `network` section should contain either a `wifi` section or an `eth`
+section.  If case there are both, the `eth` section has preference over the
+`wifi` section.
+
+Optionally, the network section can contain a `hostname` which, if set,
+is used in MQTT subscriptions as well. In such case, relace `BLE2MQTT-XXX` in
+this documentation with the hostname you have set.
+
 The `wifi` section below includes the following entries:
 ```json
 {
-  "wifi": {
-    "ssid": "MY_SSID",
-    "password": "MY_PASSWORD",
-    "eap": {
-      "method": null,
-      "identity": null,
-      "client_cert": null,
-      "client_key": null,
-      "server_cert": null,
-      "username": null,
-      "password": null
+  "network": {
+    "hostname": "MY_HOSTNAME",
+    "wifi": {
+      "ssid": "MY_SSID",
+      "password": "MY_PASSWORD",
+      "eap": {
+        "method": null,
+        "identity": null,
+        "client_cert": null,
+        "client_key": null,
+        "server_cert": null,
+        "username": null,
+        "password": null
+      }
     }
   }
 }
@@ -123,9 +134,11 @@ The `wifi` section below includes the following entries:
 The `eth` section below includes the following entries:
 ```json
 {
-  "eth": {
-    "phy": "MY_ETH_PHY",
-    "phy_power_pin": -1
+  "network": {
+    "eth": {
+      "phy": "MY_ETH_PHY",
+      "phy_power_pin": -1
+    }
   }
 }
 ```
@@ -311,11 +324,13 @@ The `sdkconfig.defaults` included in this project covers common configurations.
 ### Olimex ESP32-POE
 A number of minor changes are required to support this board:
 * Set the `eth` section as follows:
-  ```
+  ```json
   {
-    "eth": {
-      "phy": "LAN8720",
-      "phy_power_pin": 12
+    "network": {
+      "eth": {
+        "phy": "LAN8720",
+        "phy_power_pin": 12
+      }
     }
   }
   ```

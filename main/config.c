@@ -206,9 +206,10 @@ uint32_t config_ble_passkey_get(const char *mac)
 }
 
 /* Ethernet Configuration */
-const char *config_eth_phy_get(void)
+const char *config_network_eth_phy_get(void)
 {
-    cJSON *eth = cJSON_GetObjectItemCaseSensitive(config, "eth");
+    cJSON *network = cJSON_GetObjectItemCaseSensitive(config, "network");
+    cJSON *eth = cJSON_GetObjectItemCaseSensitive(network, "eth");
     cJSON *phy = cJSON_GetObjectItemCaseSensitive(eth, "phy");
 
     if (cJSON_IsString(phy))
@@ -217,9 +218,10 @@ const char *config_eth_phy_get(void)
     return NULL;
 }
 
-int8_t config_eth_phy_power_pin_get(void)
+int8_t config_network_eth_phy_power_pin_get(void)
 {
-    cJSON *eth = cJSON_GetObjectItemCaseSensitive(config, "eth");
+    cJSON *network = cJSON_GetObjectItemCaseSensitive(config, "network");
+    cJSON *eth = cJSON_GetObjectItemCaseSensitive(network, "eth");
     cJSON *phy_power_pin = cJSON_GetObjectItemCaseSensitive(eth,
         "phy_power_pin");
 
@@ -376,15 +378,28 @@ const char *config_mqtt_set_suffix_get(void)
 /* Network Configuration */
 config_network_type_t config_network_type_get(void)
 {
-    cJSON *eth = cJSON_GetObjectItemCaseSensitive(config, "eth");
+    cJSON *network = cJSON_GetObjectItemCaseSensitive(config, "network");
+    cJSON *eth = cJSON_GetObjectItemCaseSensitive(network, "eth");
 
     return eth ? NETWORK_TYPE_ETH : NETWORK_TYPE_WIFI;
 }
 
 /* WiFi Configuration */
-const char *config_wifi_ssid_get(void)
+const char *config_network_hostname_get(void)
 {
-    cJSON *wifi = cJSON_GetObjectItemCaseSensitive(config, "wifi");
+    cJSON *network = cJSON_GetObjectItemCaseSensitive(config, "network");
+    cJSON *ssid = cJSON_GetObjectItemCaseSensitive(network, "hostname");
+
+    if (cJSON_IsString(ssid))
+        return ssid->valuestring;
+
+    return NULL;
+}
+
+const char *config_network_wifi_ssid_get(void)
+{
+    cJSON *network = cJSON_GetObjectItemCaseSensitive(config, "network");
+    cJSON *wifi = cJSON_GetObjectItemCaseSensitive(network, "wifi");
     cJSON *ssid = cJSON_GetObjectItemCaseSensitive(wifi, "ssid");
 
     if (cJSON_IsString(ssid))
@@ -393,9 +408,10 @@ const char *config_wifi_ssid_get(void)
     return NULL;
 }
 
-const char *config_wifi_password_get(void)
+const char *config_network_wifi_password_get(void)
 {
-    cJSON *wifi = cJSON_GetObjectItemCaseSensitive(config, "wifi");
+    cJSON *network = cJSON_GetObjectItemCaseSensitive(config, "network");
+    cJSON *wifi = cJSON_GetObjectItemCaseSensitive(network, "wifi");
     cJSON *password = cJSON_GetObjectItemCaseSensitive(wifi, "password");
 
     if (cJSON_IsString(password))
@@ -404,9 +420,10 @@ const char *config_wifi_password_get(void)
     return NULL;
 }
 
-const char *config_wifi_eap_get(const char *param_name)
+const char *config_network_wifi_eap_get(const char *param_name)
 {
-    cJSON *wifi = cJSON_GetObjectItemCaseSensitive(config, "wifi");
+    cJSON *network = cJSON_GetObjectItemCaseSensitive(config, "network");
+    cJSON *wifi = cJSON_GetObjectItemCaseSensitive(network, "wifi");
     cJSON *eap = cJSON_GetObjectItemCaseSensitive(wifi, "eap");
     cJSON *param = cJSON_GetObjectItemCaseSensitive(eap, param_name);
 
@@ -418,7 +435,7 @@ const char *config_wifi_eap_get(const char *param_name)
 
 const char *config_eap_file_get(const char *field)
 {
-    const char *file = config_wifi_eap_get(field);
+    const char *file = config_network_wifi_eap_get(field);
     char buf[128];
 
     if (!file)
@@ -460,22 +477,22 @@ const char *config_eap_client_key_get(void)
 
 const char *config_eap_method_get(void)
 {
-    return config_wifi_eap_get("method");
+    return config_network_wifi_eap_get("method");
 }
 
 const char *config_eap_identity_get(void)
 {
-    return config_wifi_eap_get("identity");
+    return config_network_wifi_eap_get("identity");
 }
 
 const char *config_eap_username_get(void)
 {
-    return config_wifi_eap_get("username");
+    return config_network_wifi_eap_get("username");
 }
 
 const char *config_eap_password_get(void)
 {
-    return config_wifi_eap_get("password");
+    return config_network_wifi_eap_get("password");
 }
 
 /* Remote Logging Configuration */
