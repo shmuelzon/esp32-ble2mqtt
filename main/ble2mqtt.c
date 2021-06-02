@@ -30,9 +30,9 @@ typedef struct {
     ble_uuid_t characteristic;
 } mqtt_ctx_t;
 
-static char *device_name_get(void)
+static const char *device_name_get(void)
 {
-    static char *name = NULL;
+    static const char *name = NULL;
     uint8_t *mac = NULL;
 
     if (name)
@@ -51,7 +51,7 @@ static char *device_name_get(void)
         break;
     }
     name = malloc(14);
-    sprintf(name, "BLE2MQTT-%02X%02X", mac[4], mac[5]);
+    sprintf((char *)name, "BLE2MQTT-%02X%02X", mac[4], mac[5]);
 
     return name;
 }
