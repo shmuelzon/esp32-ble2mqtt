@@ -10,16 +10,28 @@
     <div id="ota">
       <div>
         <div class="subheading">Firmware Update</div>
-        <input type="file" id="firmware-file">
-        <button id="firmware-upload" onclick="startUpload('firmware')">Upload</button>
+        <input type="file" id="firmware-file" accept=".bin">
+        <button id="firmware-upload" onclick="otaStartUpload('firmware')">Upload</button>
       </div>
       <div>
         <div class="subheading">Configuration Update</div>
-        <input type="file" id="configuration-file">
-        <button id="configuration-upload" onclick="startUpload('configuration')">Upload</button>
+        <input type="file" id="configuration-file" accept=".bin">
+        <button id="configuration-upload" onclick="otaStartUpload('configuration')">Upload</button>
       </div>
         <div id="ota-status"></div>
         <div class="spinner" id="ota-spinner"></div>
+    </div>
+    <div id="file-manager">
+        <div class="subheading">File Manager</div>
+        <div id="file-manager-path">/</div>
+        <div id="file-manager-actions">
+          <button id="file-manager-up" onclick="fileManagerUp()">Up</button>
+          <button id="file-manager-delete" onclick="fileManagerDelete()">Delete</button>
+        </div>
+	<div id="file-manager-list"></div>
+        <input type="file" id="file-manager-file">
+        <button id="file-manager-upload" onclick="startFileManagerUpload()">Upload</button>
+	<div id="file-manager-status"></div>
     </div>
   </body>
 </html>

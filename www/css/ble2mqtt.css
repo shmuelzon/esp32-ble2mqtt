@@ -4,3 +4,7 @@
   height: 16px;
   background-image: url("../images/spinner.gif");
 }
+
+.file-manager-entry.highlight {
+  background-color: #ccc;
+}
