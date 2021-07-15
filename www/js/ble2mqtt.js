@@ -1,3 +1,11 @@
+/* Management */
+function reset() {
+  $.ajax({
+    url: '/reset',
+    type: 'POST',
+  });
+}
+
 /* OTA */
 function otaStartUpload(type) {
   var file = $('#' + type + '-file')[0].files[0];

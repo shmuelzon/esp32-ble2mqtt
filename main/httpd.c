@@ -27,6 +27,39 @@ void httpd_set_on_ota_completed_cb(httpd_on_ota_completed_cb_t cb)
     on_ota_completed_cb = cb;
 }
 
+static void delayed_reset_timer_cb(TimerHandle_t xTimer)
+{
+    vTaskSuspendAll();
+    esp_restart();
+    xTaskResumeAll();
+    xTimerDelete(xTimer, 0);
+}
+
+static esp_err_t reset_handler(httpd_req_t *req)
+{
+    TimerHandle_t delayed_reset_timer = xTimerCreate("delayed_reset",
+        pdMS_TO_TICKS(1000), pdFALSE, NULL, delayed_reset_timer_cb);
+
+    httpd_resp_sendstr(req, "OK");
+    xTimerStart(delayed_reset_timer, 0);
+
+    return ESP_OK;
+}
+
+static int register_management_routes(httpd_handle_t server)
+{
+    httpd_uri_t uri_ota = {
+        .uri      = "/reset",
+        .method   = HTTP_POST,
+        .handler  = reset_handler,
+        .user_ctx = NULL,
+    };
+
+    httpd_register_uri_handler(server, &uri_ota);
+
+    return 0;
+}
+
 static void ota_delayed_reset_timer_cb(TimerHandle_t xTimer)
 {
     if (!on_ota_completed_cb)
@@ -361,6 +394,7 @@ int httpd_initialize(void)
     ESP_ERROR_CHECK(httpd_start(&server, &config));
 
     /* Register URI handlers */
+    register_management_routes(server);
     register_ota_routes(server);
     register_fs_routes(server);
     register_static_routes(server);

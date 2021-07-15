@@ -9,6 +9,9 @@
     <div class="heading">BLE2MQTT</div>
     <div id="ota">
       <div>
+        <button id="reset" onclick="reset()">Reset</button>
+      </div>
+      <div>
         <div class="subheading">Firmware Update</div>
         <input type="file" id="firmware-file" accept=".bin">
         <button id="firmware-upload" onclick="otaStartUpload('firmware')">Upload</button>
