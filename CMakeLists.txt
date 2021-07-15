@@ -63,5 +63,5 @@ add_custom_target(remote-monitor
     WORKING_DIRECTORY ${PROJECT_DIR})
 
 add_custom_target(image
-    COMMAND esptool.py --chip esp32 merge_bin -o image.bin @flash_project_args
-    DEPENDS app)
+    COMMAND esptool.py --chip esp32 merge_bin -o ble2mqtt-full.bin @flash_project_args
+    DEPENDS bootloader blank_ota_data app spiffs_fs_0_bin spiffs_fs_1_bin)
