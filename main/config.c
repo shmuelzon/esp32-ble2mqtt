@@ -405,7 +405,7 @@ const char *config_network_wifi_ssid_get(void)
     if (cJSON_IsString(ssid))
         return ssid->valuestring;
 
-    return NULL;
+    return "MY_SSID";
 }
 
 const char *config_network_wifi_password_get(void)
