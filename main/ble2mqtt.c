@@ -165,11 +165,44 @@ static void ota_unsubscribe(void)
     mqtt_unsubscribe("BLE2MQTT/OTA/Config");
 }
 
+/* Management functions */
+static void management_on_restart_mqtt(const char *topic,
+    const uint8_t *payload, size_t len, void *ctx)
+{
+    if (len != 4 || strncmp((char *)payload, "true", len))
+        return;
+
+    abort();
+}
+
+static void _management_on_restart_mqtt(const char *topic,
+    const uint8_t *payload, size_t len, void *ctx);
+
+static void management_subscribe(void)
+{
+    char topic[MAX_TOPIC_LEN];
+
+    snprintf(topic, MAX_TOPIC_LEN, "%s/Restart", device_name_get());
+    mqtt_subscribe(topic, 0, _management_on_restart_mqtt, NULL, NULL);
+    mqtt_subscribe("BLE2MQTT/Restart", 0, _management_on_restart_mqtt, NULL,
+        NULL);
+}
+
+static void management_unsubscribe(void)
+{
+    char topic[MAX_TOPIC_LEN];
+
+    snprintf(topic, MAX_TOPIC_LEN, "%s/Restart", device_name_get());
+    mqtt_unsubscribe(topic);
+    mqtt_unsubscribe("BLE2MQTT/Restart");
+}
+
 static void cleanup(void)
 {
     ble_disconnect_all();
     ble_scan_stop();
     ota_unsubscribe();
+    management_unsubscribe();
 }
 
 /* Network callback functions */
@@ -199,6 +232,7 @@ static void mqtt_on_connected(void)
     ESP_LOGI(TAG, "Connected to MQTT, scanning for BLE devices");
     self_publish();
     ota_subscribe();
+    management_subscribe();
     ble_scan_start();
 }
 
@@ -466,6 +500,7 @@ typedef enum {
     EVENT_TYPE_NETWORK_DISCONNECTED,
     EVENT_TYPE_OTA_MQTT,
     EVENT_TYPE_OTA_COMPLETED,
+    EVENT_TYPE_MANAGEMENT_RESTART_MQTT,
     EVENT_TYPE_MQTT_CONNECTED,
     EVENT_TYPE_MQTT_DISCONNECTED,
     EVENT_TYPE_BLE_BROADCASTER_DISCOVERED,
@@ -545,6 +580,13 @@ static void ble2mqtt_handle_event(event_t *event)
         break;
     case EVENT_TYPE_OTA_COMPLETED:
         ota_on_completed(event->ota_completed.type, event->ota_completed.err);
+        break;
+    case EVENT_TYPE_MANAGEMENT_RESTART_MQTT:
+        management_on_restart_mqtt(event->mqtt_message.topic,
+            event->mqtt_message.payload, event->mqtt_message.len,
+            event->mqtt_message.ctx);
+        free(event->mqtt_message.topic);
+        free(event->mqtt_message.payload);
         break;
     case EVENT_TYPE_MQTT_CONNECTED:
         mqtt_on_connected();
@@ -705,6 +747,13 @@ static void _ota_on_completed(ota_type_t type, ota_err_t err)
 
     ESP_LOGD(TAG, "Queuing event HEARTBEAT_TIMER (%d, %d)", type, err);
     xQueueSend(event_queue, &event, portMAX_DELAY);
+}
+
+static void _management_on_restart_mqtt(const char *topic,
+    const uint8_t *payload, size_t len, void *ctx)
+{
+    _mqtt_on_message(EVENT_TYPE_MANAGEMENT_RESTART_MQTT, topic, payload, len,
+        ctx);
 }
 
 static void _mqtt_on_connected(void)
