@@ -30,9 +30,7 @@ void httpd_set_on_ota_completed_cb(httpd_on_ota_completed_cb_t cb)
 
 static void delayed_restart_timer_cb(TimerHandle_t xTimer)
 {
-    vTaskSuspendAll();
-    esp_restart();
-    xTaskResumeAll();
+    abort();
     xTimerDelete(xTimer, 0);
 }
 
