@@ -138,15 +138,15 @@ static void _ota_on_mqtt(const char *topic, const uint8_t *payload, size_t len,
 
 static void ota_subscribe(void)
 {
-    char topic[27];
+    char topic[MAX_TOPIC_LEN];
 
     /* Register for both a specific topic for this device and a general one */
-    sprintf(topic, "%s/OTA/Firmware", device_name_get());
+    snprintf(topic, MAX_TOPIC_LEN, "%s/OTA/Firmware", device_name_get());
     mqtt_subscribe(topic, 0, _ota_on_mqtt, (void *)OTA_TYPE_FIRMWARE, NULL);
     mqtt_subscribe("BLE2MQTT/OTA/Firmware", 0, _ota_on_mqtt,
         (void *)OTA_TYPE_FIRMWARE, NULL);
 
-    sprintf(topic, "%s/OTA/Config", device_name_get());
+    snprintf(topic, MAX_TOPIC_LEN, "%s/OTA/Config", device_name_get());
     mqtt_subscribe(topic, 0, _ota_on_mqtt, (void *)OTA_TYPE_CONFIG, NULL);
     mqtt_subscribe("BLE2MQTT/OTA/Config", 0, _ota_on_mqtt,
         (void *)OTA_TYPE_CONFIG, NULL);
