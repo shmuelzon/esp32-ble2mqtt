@@ -27,7 +27,7 @@ void httpd_set_on_ota_completed_cb(httpd_on_ota_completed_cb_t cb)
     on_ota_completed_cb = cb;
 }
 
-static void delayed_reset_timer_cb(TimerHandle_t xTimer)
+static void delayed_restart_timer_cb(TimerHandle_t xTimer)
 {
     vTaskSuspendAll();
     esp_restart();
@@ -35,27 +35,27 @@ static void delayed_reset_timer_cb(TimerHandle_t xTimer)
     xTimerDelete(xTimer, 0);
 }
 
-static esp_err_t reset_handler(httpd_req_t *req)
+static esp_err_t restart_handler(httpd_req_t *req)
 {
-    TimerHandle_t delayed_reset_timer = xTimerCreate("delayed_reset",
-        pdMS_TO_TICKS(1000), pdFALSE, NULL, delayed_reset_timer_cb);
+    TimerHandle_t delayed_restart_timer = xTimerCreate("delayed_restart",
+        pdMS_TO_TICKS(1000), pdFALSE, NULL, delayed_restart_timer_cb);
 
     httpd_resp_sendstr(req, "OK");
-    xTimerStart(delayed_reset_timer, 0);
+    xTimerStart(delayed_restart_timer, 0);
 
     return ESP_OK;
 }
 
 static int register_management_routes(httpd_handle_t server)
 {
-    httpd_uri_t uri_ota = {
-        .uri      = "/reset",
+    httpd_uri_t uri_restart = {
+        .uri      = "/restart",
         .method   = HTTP_POST,
-        .handler  = reset_handler,
+        .handler  = restart_handler,
         .user_ctx = NULL,
     };
 
-    httpd_register_uri_handler(server, &uri_ota);
+    httpd_register_uri_handler(server, &uri_restart);
 
     return 0;
 }

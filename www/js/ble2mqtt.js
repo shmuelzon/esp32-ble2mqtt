@@ -1,7 +1,7 @@
 /* Management */
-function reset() {
+function restart() {
   $.ajax({
-    url: '/reset',
+    url: '/restart',
     type: 'POST',
   });
 }
