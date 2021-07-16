@@ -13,6 +13,10 @@
         <button id="restart" onclick="restart()">Restart</button>
       </div>
       <div>
+        <div class="subheading">BLE</div>
+        <button id="clear-bonding" onclick="ble_clear_bonding()">Clear bonding database</button>
+      </div>
+      <div>
         <div class="subheading">Firmware Update</div>
         <input type="file" id="firmware-file" accept=".bin">
         <button id="firmware-upload" onclick="otaStartUpload('firmware')">Upload</button>

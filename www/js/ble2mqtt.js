@@ -6,6 +6,14 @@ function restart() {
   });
 }
 
+/* BLE */
+function ble_clear_bonding() {
+  $.ajax({
+    url: '/ble/bonding_db',
+    type: 'DELETE',
+  });
+}
+
 /* OTA */
 function otaStartUpload(type) {
   var file = $('#' + type + '-file')[0].files[0];

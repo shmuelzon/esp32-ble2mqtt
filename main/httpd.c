@@ -1,5 +1,6 @@
 #include "httpd.h"
 #include "httpd_static_files.h"
+#include "ble.h"
 #include "ota.h"
 #include <esp_err.h>
 #include <esp_log.h>
@@ -56,6 +57,26 @@ static int register_management_routes(httpd_handle_t server)
     };
 
     httpd_register_uri_handler(server, &uri_restart);
+
+    return 0;
+}
+
+static esp_err_t ble_clear_bonding_db_handler(httpd_req_t *req)
+{
+    ble_clear_bonding_info();
+    return httpd_resp_sendstr(req, "OK");
+}
+
+static int register_ble_routes(httpd_handle_t server)
+{
+    httpd_uri_t uri_ble_clear_bonding_db = {
+        .uri      = "/ble/bonding_db",
+        .method   = HTTP_DELETE,
+        .handler  = ble_clear_bonding_db_handler,
+        .user_ctx = NULL,
+    };
+
+    httpd_register_uri_handler(server, &uri_ble_clear_bonding_db);
 
     return 0;
 }
@@ -395,6 +416,7 @@ int httpd_initialize(void)
 
     /* Register URI handlers */
     register_management_routes(server);
+    register_ble_routes(server);
     register_ota_routes(server);
     register_fs_routes(server);
     register_static_routes(server);
