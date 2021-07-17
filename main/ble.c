@@ -41,6 +41,7 @@ static esp_ble_scan_params_t ble_scan_params = {
 
 /* Types */
 typedef enum {
+    BLE_OPERATION_TYPE_CONNECT,
     BLE_OPERATION_TYPE_READ,
     BLE_OPERATION_TYPE_WRITE,
     BLE_OPERATION_TYPE_WRITE_NR,
@@ -113,6 +114,26 @@ void ble_set_on_passkey_requested_cb(ble_on_passkey_requested_cb_t cb)
 }
 
 /* BLE Queue */
+static void ble_operation_remove_by_type(ble_operation_t **queue,
+    ble_operation_type_t type)
+{
+    ble_operation_t *tmp, **cur = queue;
+
+    while (*cur)
+    {
+        if ((*cur)->type == type)
+        {
+            tmp = *cur;
+            *cur = (*cur)->next;
+            if (tmp->len)
+                free(tmp->value);
+            free(tmp);
+        }
+        else
+            cur = &(*cur)->next;
+    }
+}
+
 static void ble_operation_remove_by_mac(ble_operation_t **queue,
     mac_addr_t mac)
 {
@@ -137,6 +158,12 @@ static inline void ble_operation_perform(ble_operation_t *operation)
 {
     switch (operation->type)
     {
+    case BLE_OPERATION_TYPE_CONNECT:
+        /* Stop scanning while attempting to connect */
+        esp_ble_gap_stop_scanning();
+        esp_ble_gattc_open(g_gattc_if, operation->device->mac,
+            operation->device->addr_type, true);
+        break;
     case BLE_OPERATION_TYPE_READ:
         esp_ble_gattc_read_char(g_gattc_if, operation->device->conn_id,
             operation->characteristic->handle, ESP_GATT_AUTH_REQ_NONE);
@@ -194,12 +221,13 @@ static void ble_operation_enqueue(ble_operation_t **queue,
     ble_characteristic_t *characteristic, size_t len, const uint8_t *value)
 {
     static TimerHandle_t timer = NULL;
+    static ble_characteristic_t null_characteristic;
     ble_operation_t **iter, *operation = malloc(sizeof(*operation));
 
     operation->next = NULL;
     operation->type = type;
     operation->device = device;
-    operation->characteristic = characteristic;
+    operation->characteristic = characteristic ? : &null_characteristic;
     operation->len = len;
     if (len)
     {
@@ -263,23 +291,26 @@ int ble_scan_stop(void)
     if (!scan_requested)
         return 0;
 
+    ble_operation_remove_by_type(&operation_queue, BLE_OPERATION_TYPE_CONNECT);
+
     scan_requested = 0;
     return esp_ble_gap_stop_scanning();
 }
 
 int ble_connect(mac_addr_t mac)
 {
-    ble_device_t *dev;
+    ble_device_t *device;
     int ret = -1;
 
     xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
 
-    if (!(dev = ble_device_find_by_mac(devices_list, mac)))
+    if (!(device = ble_device_find_by_mac(devices_list, mac)))
         goto Exit;
 
-    /* Stop scanning while attempting to connect */
-    esp_ble_gap_stop_scanning();
-    ret = esp_ble_gattc_open(g_gattc_if, mac, dev->addr_type, true);
+    ble_operation_enqueue(&operation_queue, BLE_OPERATION_TYPE_CONNECT, device,
+        NULL, 0, NULL);
+
+    ret = 0;
 
 Exit:
     xSemaphoreGiveRecursive(devices_list_semaphore);
@@ -712,6 +743,9 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
     case ESP_GATTC_OPEN_EVT:
     {
         ble_device_t *device;
+
+        need_dequeue = 1;
+
         /* Resume scanning, if requested */
         if (scan_requested)
             esp_ble_gap_start_scanning(-1);
