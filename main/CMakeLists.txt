@@ -17,6 +17,8 @@ foreach(file ${www_files})
         "extern const char ${c_name}_start[] asm(\"_binary_${c_name}_start\");\n")
     string(APPEND static_files_declerations
         "extern const char ${c_name}_end[] asm(\"_binary_${c_name}_end\");\n")
+    get_filename_component(www_file_dir ${build_dir}/www/${file}.gz DIRECTORY)
+    file(MAKE_DIRECTORY ${www_file_dir})
     add_custom_command(OUTPUT ${build_dir}/www/${file}.gz
         COMMAND gzip -c ${PROJECT_DIR}/www/${file} > ${build_dir}/www/${file}.gz
         DEPENDS ${PROJECT_DIR}/www/${file})
