@@ -43,7 +43,7 @@ char *_mactoa(mac_addr_t mac)
 {
     static char s[18];
 
-    sprintf(s, "%02x:%02x:%02x:%02x:%02x:%02x", mac[5], mac[3], mac[4], mac[2],
+    sprintf(s, "%02x:%02x:%02x:%02x:%02x:%02x", mac[5], mac[4], mac[3], mac[2],
         mac[1], mac[0]);
 
     return s;
