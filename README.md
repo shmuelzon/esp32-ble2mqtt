@@ -214,7 +214,8 @@ configuration:
       "definitions": {},
       "//Optional: 'whitelist' or 'blacklist'": []
     },
-    "passkeys": {}
+    "passkeys": {},
+    "mikeys": {}
   }
 }
 ```
@@ -284,6 +285,17 @@ configuration:
     "passkeys": {
       "aa:bb:cc:dd:ee:ff": 0,
       "00:11:22:??:??:??": 123456
+    }
+    ```
+* `mikeys` - An object containing "bind keys" for Xiaomi MiBeacon devices.
+  Each entry is the MAC address of the BLE device and the value is the key to use.
+  Keys are only required for some devices and can be obtained using
+  [these methods](https://github.com/custom-components/ble_monitor/blob/master/faq.md#my-sensors-ble-advertisements-are-encrypted-how-can-i-get-the-key).
+
+    ```json
+    "mikeys": {
+      "e4:aa:ec:xx:xx:xx": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "a4:c1:38:xx:xx:xx": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
     }
     ```
 

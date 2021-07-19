@@ -1,11 +1,16 @@
 #include "broadcasters.h"
 #include "ble_utils.h"
+#include "config.h"
 #include <esp_log.h>
 #include <esp_gap_ble_api.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <endian.h>
+#include <mbedtls/config.h>
+#include <mbedtls/cipher.h>
+#include <mbedtls/ccm.h>
+#include <mbedtls/error.h>
 
 /* Constants */
 static const char *TAG = "Broadcaster";
@@ -313,9 +318,7 @@ static broadcaster_ops_t eddystone_ops = {
  * - LYWSD02 - Xiaomi Temperature and Humidity sensor (E-Ink with clock)
  * - HHCCJCY01 - MiFlora plant sensor
  * - GCLS002 - VegTrug Grow Care Garden (very similar to HHCCJCY01)
- * 
- * Encrypted broadcasts are not yet supported.
- * Flashing ATC1441 firmware is recommended for devices that encrypt by default.
+ * - MCCGQ02HL - Xiaomi Mijia Window/Door Sensor 2
  */
 #define MIJIA_SENSOR_SERVICE_UUID 0xFE95
 #define MIJIA_SENSOR_DATA_TYPE_TEMP 0x04
@@ -381,23 +384,111 @@ static void mijia_sensor_metadata_get(uint8_t *adv_data, size_t adv_data_len,
     int rssi, broadcaster_meta_data_cb_t cb, void *ctx)
 {
     char s[9];
-    uint8_t len;
+    uint8_t len, data_len;
     mijia_header_t *mijia_header = mijia_sensor_data_get(adv_data,
         adv_data_len, &len);
+    mijia_data_entry_t *mijia_data_entry;
+    uint16_t frame_ctrl = le16toh(mijia_header->frame_ctrl);
+    uint8_t *payload_start = (uint8_t *)mijia_header + sizeof(mijia_header_t);
+    uint8_t decrypted[69];
 
     cb("MACAddress", _mactoa(mijia_header->mac), ctx);
     sprintf(s, "%hhu", mijia_header->message_counter);
     cb("MessageCounter", s, ctx);
 
     /* Check if any data is available */
-    if ((be16toh(mijia_header->frame_ctrl) & 0x4000) == 0)
+    if ((frame_ctrl & 0x40) == 0)
         return;
 
-    mijia_data_entry_t *mijia_data_entry = (mijia_data_entry_t *)(
-        (uint8_t *)mijia_header + sizeof(mijia_header_t) +
-        ((be16toh(mijia_header->frame_ctrl) & 0x2000) ? 1 : 0) /* skip capability byte */);
+    /* Check if there's a capability byte */
+    if (frame_ctrl & 0x20)
+    {
+        /* Check if there's an IO capability (uses one more byte) */
+        if (*payload_start & 0x20)
+            payload_start++;
+        payload_start++;
+    }
 
-    while ((uint8_t *)mijia_data_entry - (uint8_t *)mijia_header < len)
+    /* Check data is encrypted */
+    if (frame_ctrl & 0x08)
+    {
+        mbedtls_ccm_context ctx;
+        uint8_t aad[] = {0x11};
+        uint8_t nonce[12];
+        uint8_t key[16];
+        const char *key_str;
+        uint8_t version = frame_ctrl >> 12;
+        size_t crypt_len;
+        int ret;
+
+        if (version < 4)
+        {
+            ESP_LOGW(TAG, "Legacy MiBeacon encryption not supported, "
+                "skipping %s", _mactoa(mijia_header->mac));
+            return;
+        }
+
+        key_str = config_ble_mikey_get(_mactoa(mijia_header->mac));
+        if (!key_str)
+        {
+            ESP_LOGE(TAG, "MiBeacon decryption key not found for %s",
+                _mactoa(mijia_header->mac));
+            return;
+        }
+        if (strlen(key_str) != sizeof(key) * 2)
+        {
+            ESP_LOGE(TAG, "MiBeacon decryption key for %s has the wrong length",
+                _mactoa(mijia_header->mac));
+            return;
+        }
+        for (size_t i = 0; i < sizeof(key); i++)
+            sscanf(key_str + 2 * i, "%02hhx", &key[i]);
+
+        mbedtls_ccm_init(&ctx);
+        if (mbedtls_ccm_setkey(&ctx, MBEDTLS_CIPHER_ID_AES, key, 128))
+        {
+            ESP_LOGE(TAG, "Could not set MiBeacon decryption key");
+            return;
+        }
+
+        for (uint8_t i = 0; i < 6; i++)
+            nonce[i] = mijia_header->mac[i];
+        for (uint8_t i = 6; i < 9; i++)
+            nonce[i] = ((uint8_t *)mijia_header)[i - 2];
+        for (uint8_t i = 9; i < 12; i++)
+            nonce[i] = ((uint8_t *)mijia_header)[len - 7 + (i - 9)];
+
+        crypt_len = len - (payload_start - (uint8_t *)mijia_header) - 7;
+        if (crypt_len > sizeof(decrypted))
+        {
+            ESP_LOGE(TAG, "MiBeacon encrypted payload too long: %d", crypt_len);
+            return;
+        }
+
+        ret = mbedtls_ccm_auth_decrypt(&ctx, crypt_len, nonce, sizeof(nonce),
+            aad, sizeof(aad), payload_start, decrypted,
+            (uint8_t *)mijia_header + len - 4, 4);
+        if (ret)
+        {
+            char err[100] = {0};
+            mbedtls_strerror(ret, err, 99);
+            ESP_LOGE(TAG, "Could not decrypt MiBeacon: %s", err);
+            return;
+        }
+        else
+        {
+            mijia_data_entry = (mijia_data_entry_t *)decrypted;
+            data_len = crypt_len;
+        }
+    }
+    else
+    {
+        mijia_data_entry = (mijia_data_entry_t *)payload_start;
+        data_len = len - (payload_start - (uint8_t *)mijia_header);
+    }
+
+    uint8_t *first_entry = (uint8_t *)mijia_data_entry;
+    while ((uint8_t *)mijia_data_entry - first_entry < data_len)
     {
         if (mijia_data_entry->data_type == MIJIA_SENSOR_DATA_TYPE_TEMP)
         {
@@ -405,7 +496,8 @@ static void mijia_sensor_metadata_get(uint8_t *adv_data, size_t adv_data_len,
                 (int16_t)le16toh(*(uint16_t *)mijia_data_entry->data) / 10.0);
             cb("Temperature", s, ctx);
         }
-        else if (mijia_data_entry->data_type == MIJIA_SENSOR_DATA_TYPE_SWITCH_TEMP)
+        else if (mijia_data_entry->data_type ==
+            MIJIA_SENSOR_DATA_TYPE_SWITCH_TEMP)
         {
             sprintf(s, "%u", *mijia_data_entry->data);
             cb("Switch", s, ctx);
@@ -414,7 +506,8 @@ static void mijia_sensor_metadata_get(uint8_t *adv_data, size_t adv_data_len,
         }
         else if (mijia_data_entry->data_type == MIJIA_SENSOR_DATA_TYPE_HUM)
         {
-            sprintf(s, "%.1f", le16toh(*(uint16_t *)mijia_data_entry->data) / 10.0);
+            sprintf(s, "%.1f",
+                le16toh(*(uint16_t *)mijia_data_entry->data) / 10.0);
             cb("Humidity", s, ctx);
         }
         else if (mijia_data_entry->data_type == MIJIA_SENSOR_DATA_TYPE_MOIST ||
@@ -425,7 +518,8 @@ static void mijia_sensor_metadata_get(uint8_t *adv_data, size_t adv_data_len,
         }
         else if (mijia_data_entry->data_type == MIJIA_SENSOR_DATA_TYPE_FDH)
         {
-            sprintf(s, "%.1f", le16toh(*(uint16_t *)mijia_data_entry->data) / 100.0);
+            sprintf(s, "%.1f",
+                le16toh(*(uint16_t *)mijia_data_entry->data) / 100.0);
             cb("Formaldehyde", s, ctx);
         }
         else if (mijia_data_entry->data_type == MIJIA_SENSOR_DATA_TYPE_LUM)
@@ -480,7 +574,10 @@ static void mijia_sensor_metadata_get(uint8_t *adv_data, size_t adv_data_len,
             cb("DoorClosed", s, ctx);
         }
         else
-            ESP_LOGW(TAG, "Unknown MiBeacon data type: 0x%x", mijia_data_entry->data_type);
+        {
+            ESP_LOGW(TAG, "Unknown MiBeacon data type: 0x%x",
+                mijia_data_entry->data_type);
+        }
         mijia_data_entry = (mijia_data_entry_t *)(
             (uint8_t *)mijia_data_entry + 3 + mijia_data_entry->data_len);
     }
