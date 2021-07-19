@@ -330,6 +330,9 @@ static broadcaster_ops_t eddystone_ops = {
 #define MIJIA_SENSOR_DATA_TYPE_SWITCH 0x12
 #define MIJIA_SENSOR_DATA_TYPE_CONSUM 0x13
 #define MIJIA_SENSOR_DATA_TYPE_MOIST2 0x14
+#define MIJIA_SENSOR_DATA_TYPE_SMOKE 0x15
+#define MIJIA_SENSOR_DATA_TYPE_LIGHT 0x18
+#define MIJIA_SENSOR_DATA_TYPE_DOOR 0x19
 
 typedef struct {
     uint8_t data_type;
@@ -461,6 +464,23 @@ static void mijia_sensor_metadata_get(uint8_t *adv_data, size_t adv_data_len,
             sprintf(s, "%u", *mijia_data_entry->data);
             cb("Consumable", s, ctx);
         }
+        else if (mijia_data_entry->data_type == MIJIA_SENSOR_DATA_TYPE_SMOKE)
+        {
+            sprintf(s, "%u", *mijia_data_entry->data);
+            cb("Smoke", s, ctx);
+        }
+        else if (mijia_data_entry->data_type == MIJIA_SENSOR_DATA_TYPE_LIGHT)
+        {
+            sprintf(s, "%u", *mijia_data_entry->data);
+            cb("Light", s, ctx);
+        }
+        else if (mijia_data_entry->data_type == MIJIA_SENSOR_DATA_TYPE_DOOR)
+        {
+            sprintf(s, "%u", *mijia_data_entry->data);
+            cb("DoorClosed", s, ctx);
+        }
+        else
+            ESP_LOGW(TAG, "Unknown MiBeacon data type: 0x%x", mijia_data_entry->data_type);
         mijia_data_entry = (mijia_data_entry_t *)(
             (uint8_t *)mijia_data_entry + 3 + mijia_data_entry->data_len);
     }

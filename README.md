@@ -60,7 +60,8 @@ is published.
   * `TLM` frames: `Voltage`, `Temperature`, `Count` and `Uptime`
 * For Xiaomi Mijia (MiBeacon) sensors: `MACAddress`, `MessageCounter`,
   `Temperature`, `Humidity`, `Moisture`, `Formaldehyde`, `Illuminance`,
-  `Conductivity`, `Switch`, `Consumable`, `BatteryLevel`
+  `Conductivity`, `Switch`, `Consumable`, `Smoke`, `Light`, `DoorClosed`,
+  `BatteryLevel`
 * For BeeWi Smart Door sensors: `Status` and `Battery`
 * For Xiaomi LYWSD03MMC Temperature Sensors running the ATC1441 firmware:
   `MACAddress`, `MessageCounter`, `Temperature`, `Humidity`, `BatteryLevel` 
