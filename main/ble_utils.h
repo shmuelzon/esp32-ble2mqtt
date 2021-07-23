@@ -41,6 +41,7 @@ typedef struct ble_device_t {
     uint16_t conn_id;
     ble_service_t *services;
     uint8_t is_authenticating;
+    uint8_t authentication_failed;
 } ble_device_t;
 
 /* Callback functions */
@@ -84,7 +85,7 @@ ble_characteristic_t *ble_device_characteristic_add(ble_service_t *service,
 ble_characteristic_t *ble_device_characteristic_find_by_uuid(
     ble_service_t *service, ble_uuid_t uuid);
 ble_characteristic_t *ble_device_characteristic_find_by_handle(
-    ble_service_t *service, uint16_t handle);
+    ble_device_t *device, uint16_t handle);
 void ble_device_characteristic_free(ble_characteristic_t *characteristic);
 void ble_device_characteristics_free(ble_characteristic_t **list);
 

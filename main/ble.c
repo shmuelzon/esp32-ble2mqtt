@@ -711,19 +711,40 @@ static void gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
             device->is_authenticating = 0;
         }
 
-        xSemaphoreGiveRecursive(devices_list_semaphore);
 
         if (!param->ble_security.auth_cmpl.success)
         {
             ESP_LOGE(TAG, "Authentication failed, status: 0x%x",
                 param->ble_security.auth_cmpl.fail_reason);
+            device->authentication_failed = 1;
         }
+
+        xSemaphoreGiveRecursive(devices_list_semaphore);
         break;
     }
     default:
         ESP_LOGD(TAG, "GAP event %d wasn't handled", event);
         break;
     }
+}
+
+static int is_device_bonded(ble_device_t *device)
+{
+    int i, ret = 0, dev_num = esp_ble_get_bond_device_num();
+    esp_ble_bond_dev_t *dev_list = (esp_ble_bond_dev_t *)malloc(
+        sizeof(esp_ble_bond_dev_t) * dev_num);
+
+    esp_ble_get_bond_device_list(&dev_num, dev_list);
+    for (i = 0; i < dev_num; i++)
+    {
+        if (memcmp(dev_list[i].bd_addr, device->mac, sizeof(mac_addr_t)))
+            continue;
+        ret = 1;
+        break;
+    }
+
+    free(dev_list);
+    return ret;
 }
 
 static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
@@ -858,10 +879,26 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
             if (param->read.status == ESP_GATT_INSUF_AUTHENTICATION ||
                 param->read.status == ESP_GATT_INSUF_ENCRYPTION)
             {
+                if (device->authentication_failed)
+                {
+                    ble_characteristic_t *characteristic =
+                        ble_device_characteristic_find_by_handle(device,
+                        param->read.handle);
+
+                    if (characteristic)
+                    {
+                        ESP_LOGE(TAG, "Failed reading characteristic " UUID_FMT
+                            " as it requires bonding but that failed",
+                            UUID_PARAM(characteristic->uuid));
+                    }
+                    break;
+                }
+
                 if (!device->is_authenticating)
                 {
                     device->is_authenticating = 1;
                     esp_ble_set_encryption(device->mac,
+                        is_device_bonded(device) ? ESP_BLE_SEC_ENCRYPT_NO_MITM :
                         ESP_BLE_SEC_ENCRYPT_MITM);
                 }
                 /* Try again */

@@ -876,17 +876,22 @@ ble_characteristic_t *ble_device_characteristic_find_by_uuid(
 }
 
 ble_characteristic_t *ble_device_characteristic_find_by_handle(
-    ble_service_t *service, uint16_t handle)
+    ble_device_t *device, uint16_t handle)
 {
-    ble_characteristic_t *cur;
+    ble_service_t *service;
+    ble_characteristic_t *characteristic = NULL;
 
-    for (cur = service->characteristics; cur; cur = cur->next)
+    for (service = device->services; service; service = service->next)
     {
-        if (cur->handle == handle)
-            break;
+        for (characteristic = service->characteristics; characteristic;
+                characteristic = characteristic->next)
+        {
+            if (characteristic->handle == handle)
+                break;
+        }
     }
 
-    return cur;
+    return characteristic;
 }
 
 void ble_device_characteristic_free(ble_characteristic_t *characteristic)
