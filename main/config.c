@@ -205,6 +205,24 @@ uint32_t config_ble_passkey_get(const char *mac)
     return 0;
 }
 
+const char *config_ble_mikey_get(const char *mac)
+{
+    cJSON *ble = cJSON_GetObjectItemCaseSensitive(config, "ble");
+    cJSON *mikeys = cJSON_GetObjectItemCaseSensitive(ble, "mikeys");
+    cJSON *key;
+
+    if (!mikeys)
+        return NULL;
+
+    for (key = mikeys->child; key; key = key->next)
+    {
+        if (cJSON_IsString(key) && match_wildcard(key->string, mac))
+            return key->valuestring;
+    }
+
+    return NULL;
+}
+
 /* Ethernet Configuration */
 const char *config_network_eth_phy_get(void)
 {
