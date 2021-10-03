@@ -25,7 +25,9 @@ int mqtt_publish(const char *topic, uint8_t *payload, size_t len, int qos,
 
 int mqtt_connect(const char *host, uint16_t port, const char *client_id,
     const char *username, const char *password, uint8_t ssl,
-    const char *server_cert, const char *client_cert, const char *client_key);
+    const char *server_cert, const char *client_cert, const char *client_key,
+    const char *lwt_topic, const char *lwt_msg, uint8_t lwt_qos,
+    uint8_t lwt_retain);
 int mqtt_disconnect(void);
 
 uint8_t mqtt_is_connected(void);
