@@ -40,6 +40,8 @@ additional topics to help book-keeping:
   loaded (MD5 hash of configuration file)
 * `BLE2MQTT-XXX/Uptime` - The uptime of the ESP32, in seconds, published every
   minute
+* `BLE2MQTT-XXX/Status` - `Online` when running, `Offline` when powered off
+  (the latter is an LWT message)
 
 ## Broadcasters
 
