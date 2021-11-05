@@ -20,7 +20,7 @@ foreach(file ${www_files})
     get_filename_component(www_file_dir ${build_dir}/www/${file}.gz DIRECTORY)
     file(MAKE_DIRECTORY ${www_file_dir})
     add_custom_command(OUTPUT ${build_dir}/www/${file}.gz
-        COMMAND tar -czf ${build_dir}/www/${file}.gz ${PROJECT_DIR}/www/${file}
+        COMMAND gzip -c ${PROJECT_DIR}/www/${file} > ${build_dir}/www/${file}.gz
         DEPENDS ${PROJECT_DIR}/www/${file})
     target_add_binary_data(${COMPONENT_LIB} ${build_dir}/www/${file}.gz
         BINARY RENAME_TO ${c_name})
