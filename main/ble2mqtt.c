@@ -458,8 +458,13 @@ static void ble_on_characteristic_found(mac_addr_t mac, ble_uuid_t service_uuid,
     /* Characteristic can notify / indicate on changes */
     if (properties & (CHAR_PROP_NOTIFY | CHAR_PROP_INDICATE))
     {
-        ble_characteristic_notify_register(mac, service_uuid,
-            characteristic_uuid);
+        if (config_ble_characteristic_should_subscribe(uuidtoa(characteristic_uuid)))
+        {
+            ESP_LOGI(TAG, "Register Notify characteristic: " UUID_FMT ".",
+                UUID_PARAM(characteristic_uuid));
+            ble_characteristic_notify_register(mac, service_uuid,
+                characteristic_uuid);
+        }
     }
 }
 
