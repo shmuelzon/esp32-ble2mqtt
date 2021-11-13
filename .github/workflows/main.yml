@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: ESP-IDF Build
+        uses: espressif/esp-idf-ci-action@v4.3
+
+      - name: Upload Application Image
+        uses: actions/upload-artifact@v2.2.4
+        with:
+          name: Application
+          path: build/ble2mqtt.bin
+
+      - name: Upload Filesystem Image
+        uses: actions/upload-artifact@v2.2.4
+        with:
+          name: Application
+          path: build/fs_0.bin
