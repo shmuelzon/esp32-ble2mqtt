@@ -1,45 +1,97 @@
 <html>
-  <head>
+<head>
     <title>BLE2MQTT</title>
-    <link rel="stylesheet" href="css/ble2mqtt.css">
-    <script language="javascript" src="js/jquery-3.5.1.min.js"></script>
-    <script language="javascript" src="js/ble2mqtt.js"></script>
-  </head>
-  <body>
-    <div class="heading">BLE2MQTT</div>
-    <div id="ota">
-      <div>
-        <div class="subheading">Management</div>
-        <button id="restart" onclick="restart()">Restart</button>
-      </div>
-      <div>
-        <div class="subheading">BLE</div>
-        <button id="clear-bonding" onclick="ble_clear_bonding()">Clear bonding database</button>
-      </div>
-      <div>
-        <div class="subheading">Firmware Update</div>
-        <input type="file" id="firmware-file" accept=".bin">
-        <button id="firmware-upload" onclick="otaStartUpload('firmware')">Upload</button>
-      </div>
-      <div>
-        <div class="subheading">Configuration Update</div>
-        <input type="file" id="configuration-file" accept=".bin">
-        <button id="configuration-upload" onclick="otaStartUpload('configuration')">Upload</button>
-      </div>
-        <div id="ota-status"></div>
-        <div class="spinner" id="ota-spinner"></div>
-    </div>
-    <div id="file-manager">
-        <div class="subheading">File Manager</div>
-        <div id="file-manager-path">/</div>
-        <div id="file-manager-actions">
-          <button id="file-manager-up" onclick="fileManagerUp()">Up</button>
-          <button id="file-manager-delete" onclick="fileManagerDelete()">Delete</button>
+    <link rel="stylesheet" href="css/mini-default.min.css">
+    <link rel="stylesheet" href="css/progress.css">
+    <script src="js/ble2mqtt.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<div style="padding: 10px">BLE2MQTT <span id="software-version"></span> <span id="latest-release-id"></span>
+    <fieldset>
+        <legend>Management</legend>
+        <button class="small secondary" id="restart" onclick="restart()">Restart</button>
+        <input type="file" id="firmware-file" accept=".bin" style="display:none" onchange="otaStartUpload('firmware')">
+        <label for="firmware-file" class="button small primary">Upload
+            firmware</label>
+        <input type="file" id="configuration-file" accept=".bin" style="display:none"
+               onchange="otaStartUpload('configuration')">
+        <label for="configuration-file" class="button small primary">Upload
+            configuration</label>
+        <label for="modal-edit" class="button primary" onclick="downloadConfig()"><span
+                class="icon-edit inverse" title="edit config file"></span></label>
+        <input type="checkbox" id="modal-edit" class="modal">
+        <div>
+            <div class="card" style="max-width: 580px; max-height: 400px">
+                <label for="modal-edit" class="modal-close"></label>
+                <h3 class="section">Edit config file</h3>
+                <p class="section">
+                    <textarea id="config-file" rows="10" cols="70"></textarea>
+                </p>
+                <button class="tertiary" id="save" onclick="uploadConfigFile()">Save</button>
+            </div>
         </div>
-	<div id="file-manager-list"></div>
-        <input type="file" id="file-manager-file">
-        <button id="file-manager-upload" onclick="startFileManagerUpload()">Upload</button>
-	<div id="file-manager-status"></div>
-    </div>
-  </body>
+
+        <label for="modal-filemanager" class="button primary" onclick="loadFileManager('/')"><span
+                class="icon-credit inverse" title="file manager"></span></label>
+
+        <input type="checkbox" id="modal-filemanager" class="modal">
+        <div>
+            <div class="card" style="max-width: 580px; max-height: 600px">
+                <label for="modal-filemanager" class="modal-close"></label>
+                <h3 class="section">File manager</h3>
+                <div class="section"><label for="file-manager-file" class="button small primary"
+                                            title="Start upload to current dir">Upload</label>
+                    <input type="file" id="file-manager-file" style="display:none" onchange="uploadFile()"></div>
+                <div class="section">
+
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>name</th>
+                            <th>size</th>
+                            <th></th>
+                        </tr>
+                        </thead>
+                        <tbody id="file-manager-list">
+                            <tr>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                </div>
+            </div>
+        </div>
+        <div id="progress" class="progress-line" style="display: none"></div>
+    </fieldset>
+    <fieldset>
+        <legend>BLE devices</legend>
+        <button class="tertiary" id="update" onclick="bleListUpdate()"><span
+                class="icon-search inverse" title="update ble list"></span></button>
+        <button class="small secondary" id="clear-bonding" onclick="bleClearBonding()">Clear bonding database</button>
+        <table>
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>MAC</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody id="ble-list">
+
+            </tbody>
+        </table>
+    </fieldset>
+
+    <span id="message" class="toast" style="display: none">This is a toast message!</span>
+</div>
+</body>
 </html>
