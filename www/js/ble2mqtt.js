@@ -31,15 +31,17 @@ function restart() {
         method: 'POST',
     })
         .then((res) => {
-            console.log("restart")
             window.open("/busy.html", "_self")
         })
         .catch((err) => {
-            document.getElementById('message').innerText = "Can't restart";
+            toaster("Can't restart");
             console.error(err)
         })
 }
 
+//
+//API not yet implemented
+//
 function getStatus() {
     fetch(STATUS)
         .then(response => response.json())
@@ -70,7 +72,7 @@ function otaStartUpload(type) {
         body: file
     })
         .then((res) => {
-            document.getElementById('message').innerText = "Upload complete";
+            toaster("Upload complete");
             window.open("/busy.html", "_self")
         })
         .catch((err) => {
@@ -170,9 +172,9 @@ function bleListUpdate() {
                     </td>
                 </tr>`;
             }).join('\n');
-            console.log("update list complete")
         })
         .catch((err) => {
+            progress(false);
             toaster("Can't update list of ble");
             console.error(err)
         })
