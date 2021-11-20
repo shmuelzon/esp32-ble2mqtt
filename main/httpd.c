@@ -45,6 +45,23 @@ static esp_err_t restart_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+static esp_err_t status_handler(httpd_req_t *req)
+{
+    esp_err_t ret;
+    char *response_str;
+    cJSON *response = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(response, "version", BLE2MQTT_VER);
+
+    response_str = cJSON_PrintUnformatted(response);
+    httpd_resp_set_type(req, "application/json");
+    ret = httpd_resp_sendstr(req, response_str);
+
+    cJSON_free(response_str);
+    cJSON_Delete(response);
+    return ret;
+}
+
 static int register_management_routes(httpd_handle_t server)
 {
     httpd_uri_t uri_restart = {
@@ -53,8 +70,15 @@ static int register_management_routes(httpd_handle_t server)
         .handler  = restart_handler,
         .user_ctx = NULL,
     };
+    httpd_uri_t uri_status = {
+        .uri      = "/status",
+        .method   = HTTP_GET,
+        .handler  = status_handler,
+        .user_ctx = NULL,
+    };
 
     httpd_register_uri_handler(server, &uri_restart);
+    httpd_register_uri_handler(server, &uri_status);
 
     return 0;
 }
