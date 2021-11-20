@@ -1,8 +1,7 @@
 const RESTART = '/restart';
 const OTA_UPLOAD = '/ota/';
 const BLE_DB = '/ble/bonding_db';
-const BLE_DB_WHITELIST = '/ble/bonding_db/whitelist';
-const BLE_DB_BLACKLIST = '/ble/bonding_db/blacklist';
+const BLE_DEVICES = '/ble/devices';
 const CONFIG_FILE_PATH = '/fs/config.json';
 const LATEST_RELEASE = 'https://github.com/shmuelzon/esp32-ble2mqtt/releases';
 const STATUS = '/status';
@@ -142,7 +141,7 @@ function uploadConfigFile() {
 //
 function bleListUpdate() {
     progress(true);
-    fetch(BLE_DB, {
+    fetch(BLE_DEVICES, {
         method: 'GET',
     })
         .then(response => {
@@ -155,21 +154,10 @@ function bleListUpdate() {
             progress(false);
             // render BLE table
             document.getElementById('ble-list').innerHTML = json.map(item => {
-                let blackListAddDisabled = item.list === 'black' ? 'disabled' : '';
-                let blackListDeleteDisabled = item.list === 'black' ? '' : 'disabled';
-                let whiteListAddDisabled = item.list === 'white' ? 'disabled' : '';
-                let whiteListDeleteDisabled = item.list === 'white' ? '' : 'disabled';
-
                 return `
                 <tr>
-                    <td>${item.name}</td>
-                    <td>${item.mac}</td>
-                    <td><button class="small" onclick="toList('${item.mac}','','delete')">delete</button>
-                        <button class="small" onclick="toList('${item.mac}','whitelist','add')" ${whiteListAddDisabled}>add to whitelist</button>
-                        <button class="small" onclick="toList('${item.mac}','whitelist','delete')" ${whiteListDeleteDisabled}>delete from whitelist</button>
-                        <button class="small" onclick="toList('${item.mac}','blacklist','add')" ${blackListAddDisabled}>add to blacklist</button>
-                        <button class="small" onclick="toList('${item.mac}','blacklist','delete')" ${blackListDeleteDisabled}>delete from blacklist</button>
-                    </td>
+                    <td ${item.connected ? 'class="tertiary" title="connected"' : 'title="disconnected"'}>${item.name}</td>
+                    <td>${item.mac}</td> 
                 </tr>`;
             }).join('\n');
         })
@@ -180,28 +168,6 @@ function bleListUpdate() {
         })
 }
 
-//
-//API not yet implemented
-//
-function toList(mac, list, action = 'add') {
-    let list_url = list === 'whitelist' ? BLE_DB_WHITELIST :
-        (list === 'blacklist' ? BLE_DB_BLACKLIST : BLE_DB);
-    let method = action === 'add' ? 'PUT' :
-        (action === 'delete' ? 'DELETE' : 'POST')
-    fetch(list_url, {
-        method: method,
-        body: mac
-    })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error("HTTP status " + response.status);
-            }
-        })
-        .catch((err) => {
-            toaster(`Can't ${action} ble`);
-            console.error(err)
-        })
-}
 
 function loadFileManager(path) {
     path ||= document.getElementById('file-manager-path').innerText;
