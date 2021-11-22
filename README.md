@@ -257,7 +257,7 @@ configuration:
   will be used in the MQTT topic instead of its UUID and a `types` array
   defining how to parse the byte array reflecting the characteristic's value.
   The `subscribe` attribute can be set to "false" if you don't want to automatically 
-  subscribe for Notifications and Indications on a Characteristic.
+  subscribe for notifications and indications on a characteristic.
   In addition, it's possible to define a white/black list for discovered
   characteristics. The white/black list UUIDs may contain the wildcard character
   `?` to denote any value for a nibble. For example:
