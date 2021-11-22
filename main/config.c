@@ -178,15 +178,7 @@ uint8_t config_ble_characteristic_should_subscribe(const char *uuid)
     cJSON *subscribe = config_ble_get_name_by_uuid(0, uuid, "subscribe");
 
     /* Not defined, to subscribe is default */
-    if (cJSON_IsTrue(subscribe))
-    {
-        return true;
-    }
-    else if (cJSON_IsFalse(subscribe))
-    {
-        return false;
-    }
-    return true;
+    return !cJSON_IsFalse(subscribe);
 }
 
 uint8_t config_ble_service_should_include(const char *uuid)
