@@ -618,6 +618,37 @@ Exit:
     return ret;
 }
 
+/* Management */
+ble_dev_t *ble_devices_list_get(size_t *number_of_devices)
+{
+    ble_device_t *iter;
+    ble_dev_t *devices;
+    size_t i, count = 0;
+
+    xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
+
+    for (iter = devices_list; iter; iter = iter->next)
+        count++;
+
+    devices = malloc(sizeof(*devices) * count);
+    for (iter = devices_list, i = 0; iter; iter = iter->next, i++)
+    {
+        devices[i].name[0] = '\0';
+        memcpy(devices[i].mac, iter->mac, sizeof(mac_addr_t));
+        devices[i].connected = iter->conn_id != 0xffff;
+    }
+
+    xSemaphoreGiveRecursive(devices_list_semaphore);
+
+    *number_of_devices = count;
+    return devices;
+}
+
+void ble_devices_list_free(ble_dev_t *devices)
+{
+    free(devices);
+}
+
 static void gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
     ESP_LOGD(TAG, "Received GAP event %d (%s)", event, gap_event_to_str(event));

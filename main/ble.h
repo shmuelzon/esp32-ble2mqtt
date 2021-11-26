@@ -16,6 +16,13 @@
 #define CHAR_PROP_AUTH      (1 << 6)
 #define CHAR_PROP_EXT_PROP  (1 << 7)
 
+/* Types */
+typedef struct {
+    char name[32];
+    mac_addr_t mac;
+    bool connected;
+} ble_dev_t;
+
 /* Event callback types */
 typedef void (*ble_on_broadcaster_discovered_cb_t)(mac_addr_t mac,
     uint8_t *adv_data, size_t adv_data_len, int rssi, broadcaster_ops_t *ops);
@@ -65,6 +72,10 @@ int ble_characteristic_notify_register(mac_addr_t mac, ble_uuid_t service_uuid,
     ble_uuid_t characteristic_uuid);
 int ble_characteristic_notify_unregister(mac_addr_t mac,
     ble_uuid_t service_uuid, ble_uuid_t characteristic_uuid);
+
+/* Management */
+ble_dev_t *ble_devices_list_get(size_t *number_of_devices);
+void ble_devices_list_free(ble_dev_t *devices);
 
 int ble_initialize(void);
 
