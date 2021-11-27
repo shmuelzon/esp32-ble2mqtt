@@ -38,9 +38,6 @@ function restart() {
         })
 }
 
-//
-//API not yet implemented
-//
 function getStatus() {
     fetch(STATUS)
         .then(response => response.json())
@@ -136,9 +133,6 @@ function uploadConfigFile() {
         })
 }
 
-//
-//API not yet implemented
-//
 function bleListUpdate() {
     progress(true);
     fetch(BLE_DEVICES, {
@@ -156,7 +150,7 @@ function bleListUpdate() {
             document.getElementById('ble-list').innerHTML = json.map(item => {
                 return `
                 <tr>
-                    <td><mark ${item.connected ? 'class="tertiary" title="connected"' : 'class="secondary" title="disconnected"'}>${item.name}</mark></td>
+                    <td><mark ${item.connected ? 'class="tertiary" title="connected"' : 'class="secondary" title="disconnected"'}>${item.name || "[None]"}</mark></td>
                     <td>${item.mac}</td> 
                 </tr>`;
             }).join('\n');

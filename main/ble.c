@@ -19,7 +19,7 @@
 
 static const char *TAG = "BLE";
 static esp_ble_scan_params_t ble_scan_params = {
-    .scan_type = BLE_SCAN_TYPE_PASSIVE,
+    .scan_type = BLE_SCAN_TYPE_ACTIVE,
     .own_addr_type = BLE_ADDR_TYPE_RANDOM,
     .scan_filter_policy = BLE_SCAN_FILTER_ALLOW_ALL,
     /* Scan interval. This is defined as the time interval from
@@ -633,7 +633,7 @@ ble_dev_t *ble_devices_list_get(size_t *number_of_devices)
     devices = malloc(sizeof(*devices) * count);
     for (iter = devices_list, i = 0; iter; iter = iter->next, i++)
     {
-        devices[i].name[0] = '\0';
+        strncpy(devices[i].name, iter->name ? : "", 32);
         memcpy(devices[i].mac, iter->mac, sizeof(mac_addr_t));
         devices[i].connected = iter->conn_id != 0xffff;
     }
@@ -647,6 +647,27 @@ ble_dev_t *ble_devices_list_get(size_t *number_of_devices)
 void ble_devices_list_free(ble_dev_t *devices)
 {
     free(devices);
+}
+
+static char *ble_device_name_get(uint8_t *adv_data)
+{
+    static char name[32];
+    uint8_t len;
+    uint8_t *data;
+
+    if (!(data = esp_ble_resolve_adv_data(adv_data, ESP_BLE_AD_TYPE_NAME_CMPL,
+        &len)))
+    {
+        if (!(data = esp_ble_resolve_adv_data(adv_data,
+            ESP_BLE_AD_TYPE_NAME_SHORT, &len)))
+        {
+            return NULL;
+        }
+    }
+
+    strncpy(name, (char *)data, len);
+    name[len] = '\0';
+    return name;
 }
 
 static void gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
@@ -681,6 +702,7 @@ static void gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
     case ESP_GAP_BLE_SCAN_RESULT_EVT:
     {
         ble_device_t *device;
+        char *name;
 
         /* If scan was stopped before this device was found, ignore it */
         if (!scan_requested)
@@ -701,17 +723,23 @@ static void gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 
         xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
 
+        name = ble_device_name_get(param->scan_rst.ble_adv);
         device = ble_device_find_by_mac(devices_list, param->scan_rst.bda);
 
-        /* Device already discovered, nothing to do*/
+        /* Device already discovered */
         if (device)
         {
+            /* Update name, if none was available */
+            if (!device->name && name)
+                ble_device_update_name(device, name);
+
             xSemaphoreGiveRecursive(devices_list_semaphore);
             break;
         }
 
         /* Cache device information */
-        ble_device_add(&devices_list, param->scan_rst.bda,
+        name = ble_device_name_get(param->scan_rst.ble_adv);
+        ble_device_add(&devices_list, name, param->scan_rst.bda,
             param->scan_rst.ble_addr_type, 0xffff);
 
         xSemaphoreGiveRecursive(devices_list_semaphore);

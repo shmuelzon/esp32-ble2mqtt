@@ -100,7 +100,10 @@ static esp_err_t ble_get_devices_handler(httpd_req_t *req)
     for (i = 0; i < number_of_devices; i++)
     {
         cJSON *object = cJSON_CreateObject();
-        cJSON_AddStringToObject(object, "name", devices[i].name);
+        if (*devices[i].name)
+            cJSON_AddStringToObject(object, "name", devices[i].name);
+        else
+            cJSON_AddNullToObject(object, "name");
         cJSON_AddStringToObject(object, "mac", mactoa(devices[i].mac));
         cJSON_AddBoolToObject(object, "connected", devices[i].connected);
         cJSON_AddItemToArray(response, object);

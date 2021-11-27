@@ -36,6 +36,7 @@ typedef struct ble_service_t {
 
 typedef struct ble_device_t {
     struct ble_device_t *next;
+    char *name;
     mac_addr_t mac;
     esp_ble_addr_type_t addr_type;
     uint16_t conn_id;
@@ -63,8 +64,9 @@ const char *ble_service_name_get(ble_uuid_t uuid);
 const char *ble_characteristic_name_get(ble_uuid_t uuid);
 
 /* Devices list */
-ble_device_t *ble_device_add(ble_device_t **list, mac_addr_t mac,
-    esp_ble_addr_type_t addr_type, uint16_t conn_id);
+ble_device_t *ble_device_add(ble_device_t **list, const char *name,
+    mac_addr_t mac, esp_ble_addr_type_t addr_type, uint16_t conn_id);
+void ble_device_update_name(ble_device_t *device, const char *name);
 ble_device_t *ble_device_find_by_mac(ble_device_t *list, mac_addr_t mac);
 ble_device_t *ble_device_find_by_conn_id(ble_device_t *list, uint16_t conn_id);
 void ble_device_foreach(ble_device_t *list, ble_on_device_cb_t cb);

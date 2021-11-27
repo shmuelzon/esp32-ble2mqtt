@@ -676,12 +676,13 @@ const char *ble_characteristic_name_get(ble_uuid_t uuid)
     return ble_get_sig_characteristic_name(uuid) ? : uuidtoa(uuid);
 }
 
-ble_device_t *ble_device_add(ble_device_t **list, mac_addr_t mac,
-    esp_ble_addr_type_t addr_type, uint16_t conn_id)
+ble_device_t *ble_device_add(ble_device_t **list, const char *name,
+    mac_addr_t mac, esp_ble_addr_type_t addr_type, uint16_t conn_id)
 {
     ble_device_t *dev, **cur;
 
     dev = calloc(1, sizeof(*dev));
+    dev->name = name ? strdup(name) : NULL;
     memcpy(dev->mac, mac, sizeof(mac_addr_t));
     dev->addr_type = addr_type;
     dev->conn_id = conn_id;
@@ -690,6 +691,13 @@ ble_device_t *ble_device_add(ble_device_t **list, mac_addr_t mac,
     *cur = dev;
 
     return dev;
+}
+
+void ble_device_update_name(ble_device_t *device, const char *name)
+{
+    if (device->name)
+        free(device->name);
+    device->name = strdup(name);
 }
 
 ble_device_t *ble_device_find_by_mac(ble_device_t *list, mac_addr_t mac)
@@ -780,6 +788,8 @@ void ble_device_remove_disconnected(ble_device_t **list)
 void ble_device_free(ble_device_t *dev)
 {
     ble_device_services_free(&dev->services);
+    if (dev->name)
+        free(dev->name);
     free(dev);
 }
 
