@@ -156,7 +156,7 @@ function bleListUpdate() {
             document.getElementById('ble-list').innerHTML = json.map(item => {
                 return `
                 <tr>
-                    <td ${item.connected ? 'class="tertiary" title="connected"' : 'title="disconnected"'}>${item.name}</td>
+                    <td><mark ${item.connected ? 'class="tertiary" title="connected"' : 'class="secondary" title="disconnected"'}>${item.name}</mark></td>
                     <td>${item.mac}</td> 
                 </tr>`;
             }).join('\n');
