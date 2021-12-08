@@ -45,6 +45,23 @@ static esp_err_t restart_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+static esp_err_t status_handler(httpd_req_t *req)
+{
+    esp_err_t ret;
+    char *response_str;
+    cJSON *response = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(response, "version", BLE2MQTT_VER);
+
+    response_str = cJSON_PrintUnformatted(response);
+    httpd_resp_set_type(req, "application/json");
+    ret = httpd_resp_sendstr(req, response_str);
+
+    cJSON_free(response_str);
+    cJSON_Delete(response);
+    return ret;
+}
+
 static int register_management_routes(httpd_handle_t server)
 {
     httpd_uri_t uri_restart = {
@@ -53,8 +70,15 @@ static int register_management_routes(httpd_handle_t server)
         .handler  = restart_handler,
         .user_ctx = NULL,
     };
+    httpd_uri_t uri_status = {
+        .uri      = "/status",
+        .method   = HTTP_GET,
+        .handler  = status_handler,
+        .user_ctx = NULL,
+    };
 
     httpd_register_uri_handler(server, &uri_restart);
+    httpd_register_uri_handler(server, &uri_status);
 
     return 0;
 }
@@ -65,6 +89,36 @@ static esp_err_t ble_clear_bonding_db_handler(httpd_req_t *req)
     return httpd_resp_sendstr(req, "OK");
 }
 
+static esp_err_t ble_get_devices_handler(httpd_req_t *req)
+{
+    esp_err_t ret;
+    size_t i, number_of_devices;
+    char *response_str;
+    cJSON *response = cJSON_CreateArray();
+    ble_dev_t *devices = ble_devices_list_get(&number_of_devices);
+
+    for (i = 0; i < number_of_devices; i++)
+    {
+        cJSON *object = cJSON_CreateObject();
+        if (*devices[i].name)
+            cJSON_AddStringToObject(object, "name", devices[i].name);
+        else
+            cJSON_AddNullToObject(object, "name");
+        cJSON_AddStringToObject(object, "mac", mactoa(devices[i].mac));
+        cJSON_AddBoolToObject(object, "connected", devices[i].connected);
+        cJSON_AddItemToArray(response, object);
+    }
+
+    response_str = cJSON_PrintUnformatted(response);
+    httpd_resp_set_type(req, "application/json");
+    ret = httpd_resp_sendstr(req, response_str);
+
+    cJSON_free(response_str);
+    cJSON_Delete(response);
+    ble_devices_list_free(devices);
+    return ret;
+}
+
 static int register_ble_routes(httpd_handle_t server)
 {
     httpd_uri_t uri_ble_clear_bonding_db = {
@@ -73,8 +127,15 @@ static int register_ble_routes(httpd_handle_t server)
         .handler  = ble_clear_bonding_db_handler,
         .user_ctx = NULL,
     };
+    httpd_uri_t uri_ble_get_devices = {
+        .uri      = "/ble/devices",
+        .method   = HTTP_GET,
+        .handler  = ble_get_devices_handler,
+        .user_ctx = NULL,
+    };
 
     httpd_register_uri_handler(server, &uri_ble_clear_bonding_db);
+    httpd_register_uri_handler(server, &uri_ble_get_devices);
 
     return 0;
 }

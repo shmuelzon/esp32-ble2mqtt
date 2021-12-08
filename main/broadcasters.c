@@ -319,8 +319,10 @@ static broadcaster_ops_t eddystone_ops = {
  * - HHCCJCY01 - MiFlora plant sensor
  * - GCLS002 - VegTrug Grow Care Garden (very similar to HHCCJCY01)
  * - MCCGQ02HL - Xiaomi Mijia Window/Door Sensor 2
+ * - RTCGQ02LM - Xiaomi Mijia Motion Sensor 2
  */
 #define MIJIA_SENSOR_SERVICE_UUID 0xFE95
+#define MIJIA_SENSOR_DATA_TYPE_MOTION 0x03
 #define MIJIA_SENSOR_DATA_TYPE_TEMP 0x04
 #define MIJIA_SENSOR_DATA_TYPE_SWITCH_TEMP 0x05
 #define MIJIA_SENSOR_DATA_TYPE_HUM 0x06
@@ -330,12 +332,17 @@ static broadcaster_ops_t eddystone_ops = {
 #define MIJIA_SENSOR_DATA_TYPE_COND 0x09
 #define MIJIA_SENSOR_DATA_TYPE_BATT 0x0A
 #define MIJIA_SENSOR_DATA_TYPE_TEMP_HUM 0x0D
+#define MIJIA_SENSOR_DATA_TYPE_MOTION_LIGHT 0x0F
 #define MIJIA_SENSOR_DATA_TYPE_SWITCH 0x12
 #define MIJIA_SENSOR_DATA_TYPE_CONSUM 0x13
 #define MIJIA_SENSOR_DATA_TYPE_MOIST2 0x14
 #define MIJIA_SENSOR_DATA_TYPE_SMOKE 0x15
 #define MIJIA_SENSOR_DATA_TYPE_LIGHT 0x18
 #define MIJIA_SENSOR_DATA_TYPE_DOOR 0x19
+
+#define MIJIA_DEVICE_TYPE_CGPR1 0x0A83
+#define MIJIA_DEVICE_TYPE_MJYD02YL 0x07F6
+#define MIJIA_DEVICE_TYPE_RTCGQ02LM 0x0A8D
 
 typedef struct {
     uint8_t data_type;
@@ -389,6 +396,7 @@ static void mijia_sensor_metadata_get(uint8_t *adv_data, size_t adv_data_len,
         adv_data_len, &len);
     mijia_data_entry_t *mijia_data_entry;
     uint16_t frame_ctrl = le16toh(mijia_header->frame_ctrl);
+    uint16_t device_type = le16toh(mijia_header->device_type);
     uint8_t *payload_start = (uint8_t *)mijia_header + sizeof(mijia_header_t);
     uint8_t decrypted[69];
 
@@ -490,7 +498,12 @@ static void mijia_sensor_metadata_get(uint8_t *adv_data, size_t adv_data_len,
     uint8_t *first_entry = (uint8_t *)mijia_data_entry;
     while ((uint8_t *)mijia_data_entry - first_entry < data_len)
     {
-        if (mijia_data_entry->data_type == MIJIA_SENSOR_DATA_TYPE_TEMP)
+        if (mijia_data_entry->data_type == MIJIA_SENSOR_DATA_TYPE_MOTION)
+        {
+            sprintf(s, "%u", *mijia_data_entry->data);
+            cb("Motion", s, ctx);
+        }
+        else if (mijia_data_entry->data_type == MIJIA_SENSOR_DATA_TYPE_TEMP)
         {
             sprintf(s, "%.1f",
                 (int16_t)le16toh(*(uint16_t *)mijia_data_entry->data) / 10.0);
@@ -547,6 +560,21 @@ static void mijia_sensor_metadata_get(uint8_t *adv_data, size_t adv_data_len,
             sprintf(s, "%.1f",
                 le16toh(*(uint16_t *)(mijia_data_entry->data + 2)) / 10.0);
             cb("Humidity", s, ctx);
+        }
+        else if (mijia_data_entry->data_type == MIJIA_SENSOR_DATA_TYPE_MOTION_LIGHT)
+        {
+            uint32_t val = mijia_data_entry->data[0]
+                | (mijia_data_entry->data[1] << 8) | (mijia_data_entry->data[2] << 16);
+            if (device_type == MIJIA_DEVICE_TYPE_CGPR1)
+            {
+                sprintf(s, "%u", val);
+                cb("Illuminance", s, ctx);
+            }
+            else if (device_type == MIJIA_DEVICE_TYPE_MJYD02YL)
+                cb("Light", val == 100 ? "1" : "0", ctx);
+            else if (device_type == MIJIA_DEVICE_TYPE_RTCGQ02LM)
+                cb("Light", val == 256 ? "1" : "0", ctx);
+            cb("Motion", "1", ctx);
         }
         else if (mijia_data_entry->data_type == MIJIA_SENSOR_DATA_TYPE_SWITCH)
         {
