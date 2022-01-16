@@ -286,13 +286,15 @@ static void ble_publish_connected(mac_addr_t mac, uint8_t is_connected)
 
     if (is_connected)
     {
+        const char *device_name = device_name_get();
+        
         /* Subscribe for other devices claiming this device is disconnected */
         mqtt_subscribe(topic, config_mqtt_qos_get(), _ble_on_mqtt_connected_cb,
             strdup(mactoa(mac)), free);
         /* We are now the owner of this device */
         snprintf(topic, MAX_TOPIC_LEN, "%s" MAC_FMT "/Owner",
             config_mqtt_prefix_get(), MAC_PARAM(mac));
-        mqtt_publish(topic, (uint8_t *)device_name_get(), 13,
+        mqtt_publish(topic, (uint8_t *)device_name, strlen(device_name),
             config_mqtt_qos_get(), config_mqtt_retained_get());
     }
 }
