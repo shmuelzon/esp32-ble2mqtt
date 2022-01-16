@@ -292,7 +292,7 @@ static void ble_publish_connected(mac_addr_t mac, uint8_t is_connected)
         /* We are now the owner of this device */
         snprintf(topic, MAX_TOPIC_LEN, "%s" MAC_FMT "/Owner",
             config_mqtt_prefix_get(), MAC_PARAM(mac));
-        mqtt_publish(topic, (uint8_t *)device_name_get(), 14,
+        mqtt_publish(topic, (uint8_t *)device_name_get(), 13,
             config_mqtt_qos_get(), config_mqtt_retained_get());
     }
 }
