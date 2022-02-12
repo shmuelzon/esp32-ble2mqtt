@@ -41,6 +41,7 @@ void eth_hostname_set(const char *hostname)
     eth_hostname = strdup(hostname);
 }
 
+#if CONFIG_ETH_USE_ESP32_EMAC
 static void event_handler(void* arg, esp_event_base_t event_base,
     int32_t event_id, void* event_data)
 {
@@ -82,6 +83,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         }
     }
 }
+#endif
 
 eth_phy_t eth_phy_atophy(const char *phy)
 {
@@ -106,6 +108,7 @@ eth_phy_t eth_phy_atophy(const char *phy)
 
 int eth_connect(eth_phy_t eth_phy, int8_t eth_phy_power_pin)
 {
+#if CONFIG_ETH_USE_ESP32_EMAC
     esp_netif_config_t cfg = ESP_NETIF_DEFAULT_ETH();
     esp_netif_t *eth_netif = esp_netif_new(&cfg);
     eth_mac_config_t mac_config = ETH_MAC_DEFAULT_CONFIG();
@@ -149,10 +152,14 @@ int eth_connect(eth_phy_t eth_phy, int8_t eth_phy_power_pin)
     ESP_ERROR_CHECK(esp_eth_start(eth_handle));
 
     return 0;
+#else
+    return -1;
+#endif
 }
 
 int eth_initialize(void)
 {
+#if CONFIG_ETH_USE_ESP32_EMAC
     ESP_LOGD(TAG, "Initializing Ethernet");
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -161,4 +168,8 @@ int eth_initialize(void)
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
 
     return 0;
+#else
+    ESP_LOGE(TAG, "Ethernet not supported!");
+    return -1;
+#endif
 }
