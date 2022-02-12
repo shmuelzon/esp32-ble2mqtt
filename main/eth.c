@@ -114,8 +114,6 @@ int eth_connect(eth_phy_t eth_phy, int8_t eth_phy_power_pin)
     esp_eth_config_t config = ETH_DEFAULT_CONFIG(mac, NULL);
     esp_eth_handle_t eth_handle = NULL;
 
-    ESP_ERROR_CHECK(esp_eth_set_default_handlers(eth_netif));
-
     if (eth_phy_power_pin >= 0)
     {
         gpio_pad_select_gpio(eth_phy_power_pin);
