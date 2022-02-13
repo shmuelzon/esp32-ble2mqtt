@@ -182,7 +182,7 @@ int mqtt_unsubscribe_topic_prefix(const char *topic_prefix)
     while (*cur)
     {
         tmp = *cur;
-        if (!strncmp(topic_prefix, (*cur)->topic, prefix_len))
+        if (strncmp(topic_prefix, (*cur)->topic, prefix_len))
         {
             cur = &(*cur)->next;
             continue;
