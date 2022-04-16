@@ -66,7 +66,7 @@ is published.
   `BatteryLevel`
 * For BeeWi Smart Door sensors: `Status` and `Battery`
 * For Xiaomi LYWSD03MMC Temperature Sensors running the ATC1441 firmware:
-  `MACAddress`, `MessageCounter`, `Temperature`, `Humidity`, `BatteryLevel` 
+  `MACAddress`, `MessageCounter`, `Temperature`, `Humidity`, `BatteryLevel`
   and `BatteryVolts` (_See https://github.com/atc1441/ATC_MiThermometer_)
 
 **Note:** Broadcaster topics are published without the retained flag regardless
@@ -74,11 +74,13 @@ of what's defined in the configuration file.
 
 ## Compiling
 
-1. Install `idf.py`
+1. Install `ESP-IDF`
 
-You will first need to install the 
-[Espressif IoT Development Framework](https://github.com/espressif/esp-idf) 
-to get the `idf.py` file. The [Installation Instructions](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/linux-macos-setup.html) have all of the details. Make sure to follow ALL the steps, up to and including step 4 where you set up the tools and the `get_idf` alias.
+You will first need to install the
+[Espressif IoT Development Framework](https://github.com/espressif/esp-idf).
+The [Installation Instructions](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/linux-macos-setup.html)
+have all of the details. Make sure to follow ALL the steps, up to and including step 4 where you set up the tools and
+the `get_idf` alias.
 
 2. Download the repository and its dependencies:
 
@@ -90,13 +92,10 @@ git clone --recursive https://github.com/shmuelzon/esp32-ble2mqtt
 
 Modify the [configuration file](#configuration) to fit your environment, build
 and flash (make sure to modify the serial device your ESP32 is connected to):
+
 ```bash
 idf.py flash -p /dev/ttyS1
 ```
-
-You can get the TTY of your device (on linux) by running `dmesg | grep tty` and
-then plugging in your device, and running the command again. You are looking for
-a line similar to: `usb 3-2: cp210x converter now attached to ttyUSB0`.
 
 ## Remote Logging
 
