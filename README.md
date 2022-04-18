@@ -94,7 +94,7 @@ Modify the [configuration file](#configuration) to fit your environment, build
 and flash (make sure to modify the serial device your ESP32 is connected to):
 
 ```bash
-idf.py flash -p /dev/ttyS1
+idf.py build flash
 ```
 
 ## Remote Logging
