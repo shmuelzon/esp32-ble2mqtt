@@ -84,6 +84,12 @@ static void self_publish(void)
     char topic[MAX_TOPIC_LEN];
     char *payload;
 
+    /* Current status */
+    payload = "Online";
+    snprintf(topic, MAX_TOPIC_LEN, "%s/Status", device_name_get());
+    mqtt_publish(topic, (uint8_t *)payload, strlen(payload),
+        config_mqtt_qos_get(), config_mqtt_retained_get());
+
     /* App version */
     payload = BLE2MQTT_VER;
     snprintf(topic, MAX_TOPIC_LEN, "%s/Version", device_name_get());
@@ -208,13 +214,18 @@ static void cleanup(void)
 /* Network callback functions */
 static void network_on_connected(void)
 {
+    char status_topic[MAX_TOPIC_LEN];
+
     log_start(config_log_host_get(), config_log_port_get());
     ESP_LOGI(TAG, "Connected to the network, connecting to MQTT");
+    snprintf(status_topic, MAX_TOPIC_LEN, "%s/Status", device_name_get());
+
     mqtt_connect(config_mqtt_host_get(), config_mqtt_port_get(),
         config_mqtt_client_id_get(), config_mqtt_username_get(),
         config_mqtt_password_get(), config_mqtt_ssl_get(),
         config_mqtt_server_cert_get(), config_mqtt_client_cert_get(),
-        config_mqtt_client_key_get());
+        config_mqtt_client_key_get(), status_topic, "Offline",
+        config_mqtt_qos_get(), config_mqtt_retained_get());
 }
 
 static void network_on_disconnected(void)
@@ -286,13 +297,15 @@ static void ble_publish_connected(mac_addr_t mac, uint8_t is_connected)
 
     if (is_connected)
     {
+        const char *device_name = device_name_get();
+        
         /* Subscribe for other devices claiming this device is disconnected */
         mqtt_subscribe(topic, config_mqtt_qos_get(), _ble_on_mqtt_connected_cb,
             strdup(mactoa(mac)), free);
         /* We are now the owner of this device */
         snprintf(topic, MAX_TOPIC_LEN, "%s" MAC_FMT "/Owner",
             config_mqtt_prefix_get(), MAC_PARAM(mac));
-        mqtt_publish(topic, (uint8_t *)device_name_get(), 14,
+        mqtt_publish(topic, (uint8_t *)device_name, strlen(device_name),
             config_mqtt_qos_get(), config_mqtt_retained_get());
     }
 }

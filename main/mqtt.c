@@ -182,7 +182,7 @@ int mqtt_unsubscribe_topic_prefix(const char *topic_prefix)
     while (*cur)
     {
         tmp = *cur;
-        if (!strncmp(topic_prefix, (*cur)->topic, prefix_len))
+        if (strncmp(topic_prefix, (*cur)->topic, prefix_len))
         {
             cur = &(*cur)->next;
             continue;
@@ -278,7 +278,9 @@ static esp_err_t mqtt_event_cb(esp_mqtt_event_handle_t event)
 
 int mqtt_connect(const char *host, uint16_t port, const char *client_id,
     const char *username, const char *password, uint8_t ssl,
-    const char *server_cert, const char *client_cert, const char *client_key)
+    const char *server_cert, const char *client_cert, const char *client_key,
+    const char *lwt_topic, const char *lwt_msg, uint8_t lwt_qos,
+    uint8_t lwt_retain)
 {
     esp_mqtt_client_config_t config = {
         .event_handle = mqtt_event_cb,
@@ -291,6 +293,10 @@ int mqtt_connect(const char *host, uint16_t port, const char *client_id,
         .cert_pem = server_cert,
         .client_cert_pem = client_cert,
         .client_key_pem = client_key,
+        .lwt_topic = lwt_topic,
+        .lwt_msg = lwt_msg,
+        .lwt_qos = lwt_qos,
+        .lwt_retain = lwt_retain,
     };
 
     ESP_LOGI(TAG, "Connecting MQTT client");

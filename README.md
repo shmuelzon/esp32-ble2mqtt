@@ -2,7 +2,7 @@
 
 This project is a BLE to MQTT bridge, i.e. it exposes BLE GATT characteristics
 as MQTT topics for bidirectional communication. It's developed for the ESP32 SoC
-and is based on [ESP-IDF](https://github.com/espressif/esp-idf) release v4.3.1.
+and is based on [ESP-IDF](https://github.com/espressif/esp-idf) release v4.4.
 Note that using any other ESP-IDF version might not be stable or even compile.
 
 For example, if a device with a MAC address of `a0:e6:f8:50:72:53` exposes the
@@ -40,6 +40,8 @@ additional topics to help book-keeping:
   loaded (MD5 hash of configuration file)
 * `BLE2MQTT-XXX/Uptime` - The uptime of the ESP32, in seconds, published every
   minute
+* `BLE2MQTT-XXX/Status` - `Online` when running, `Offline` when powered off
+  (the latter is an LWT message)
 
 ## Broadcasters
 
@@ -64,7 +66,7 @@ is published.
   `BatteryLevel`
 * For BeeWi Smart Door sensors: `Status` and `Battery`
 * For Xiaomi LYWSD03MMC Temperature Sensors running the ATC1441 firmware:
-  `MACAddress`, `MessageCounter`, `Temperature`, `Humidity`, `BatteryLevel` 
+  `MACAddress`, `MessageCounter`, `Temperature`, `Humidity`, `BatteryLevel`
   and `BatteryVolts` (_See https://github.com/atc1441/ATC_MiThermometer_)
 
 **Note:** Broadcaster topics are published without the retained flag regardless
@@ -72,14 +74,27 @@ of what's defined in the configuration file.
 
 ## Compiling
 
-Download the repository and its dependencies:
+1. Install `ESP-IDF`
+
+You will first need to install the
+[Espressif IoT Development Framework](https://github.com/espressif/esp-idf).
+The [Installation Instructions](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/linux-macos-setup.html)
+have all of the details. Make sure to follow ALL the steps, up to and including step 4 where you set up the tools and
+the `get_idf` alias.
+
+2. Download the repository and its dependencies:
+
 ```bash
 git clone --recursive https://github.com/shmuelzon/esp32-ble2mqtt
 ```
+
+3. Modify the config.json and flash
+
 Modify the [configuration file](#configuration) to fit your environment, build
 and flash (make sure to modify the serial device your ESP32 is connected to):
+
 ```bash
-idf.py flash -p /dev/ttyS1
+idf.py build flash
 ```
 
 ## Remote Logging
