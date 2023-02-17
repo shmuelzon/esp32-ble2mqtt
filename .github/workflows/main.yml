@@ -22,6 +22,7 @@ jobs:
         uses: espressif/esp-idf-ci-action@v1.1.0
         with:
           esp_idf_version: v5.0
+          command: idf.py image
 
       - name: Upload Application Image
         uses: actions/upload-artifact@v2.2.4
@@ -34,3 +35,9 @@ jobs:
         with:
           name: File System
           path: build/fs_0.bin
+
+      - name: Upload Full Flash Image
+        uses: actions/upload-artifact@v2.2.4
+        with:
+          name: File System
+          path: build/ble2mqtt-full.bin
