@@ -247,9 +247,12 @@ static void mqtt_message_cb(const char *topic, size_t topic_len,
     }
 }
 
-static esp_err_t mqtt_event_cb(esp_mqtt_event_handle_t event)
+static void mqtt_event_cb(void *handler_args, esp_event_base_t base,
+    int32_t event_id, void *event_data)
 {
-    switch (event->event_id) {
+    esp_mqtt_event_handle_t event = event_data;
+
+    switch ((esp_mqtt_event_id_t)event_id) {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT client connected");
         is_connected = 1;
@@ -272,8 +275,6 @@ static esp_err_t mqtt_event_cb(esp_mqtt_event_handle_t event)
     default:
         break;
     }
-
-    return ESP_OK;
 }
 
 int mqtt_connect(const char *host, uint16_t port, const char *client_id,
@@ -283,20 +284,34 @@ int mqtt_connect(const char *host, uint16_t port, const char *client_id,
     uint8_t lwt_retain)
 {
     esp_mqtt_client_config_t config = {
-        .event_handle = mqtt_event_cb,
-        .host = resolve_host(host),
-        .port = port,
-        .client_id = client_id,
-        .username = username,
-        .password = password,
-        .transport = ssl ? MQTT_TRANSPORT_OVER_SSL : MQTT_TRANSPORT_OVER_TCP,
-        .cert_pem = server_cert,
-        .client_cert_pem = client_cert,
-        .client_key_pem = client_key,
-        .lwt_topic = lwt_topic,
-        .lwt_msg = lwt_msg,
-        .lwt_qos = lwt_qos,
-        .lwt_retain = lwt_retain,
+        .broker = {
+            .address = {
+                .hostname = resolve_host(host),
+                .port = port,
+                .transport =
+                    ssl ? MQTT_TRANSPORT_OVER_SSL : MQTT_TRANSPORT_OVER_TCP,
+            },
+            .verification = {
+                .certificate = server_cert,
+            },
+        },
+        .credentials = {
+            .client_id = client_id,
+            .username = username,
+            .authentication = {
+                .password = password,
+                .certificate = client_cert,
+                .key = client_key,
+            }
+        },
+        .session = {
+            .last_will = {
+                .topic = lwt_topic,
+                .msg = lwt_msg,
+                .qos = lwt_qos,
+                .retain = lwt_retain,
+            },
+        },
     };
 
     ESP_LOGI(TAG, "Connecting MQTT client");
@@ -304,6 +319,8 @@ int mqtt_connect(const char *host, uint16_t port, const char *client_id,
         esp_mqtt_client_destroy(mqtt_handle);
     if (!(mqtt_handle = esp_mqtt_client_init(&config)))
         return -1;
+    esp_mqtt_client_register_event(mqtt_handle, ESP_EVENT_ANY_ID, mqtt_event_cb,
+        NULL);
     esp_mqtt_client_start(mqtt_handle);
     return 0;
 }

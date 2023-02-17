@@ -3,6 +3,9 @@
 #include <esp_eth.h>
 #include <esp_event.h>
 #include <esp_log.h>
+#include <esp_mac.h>
+#include <esp_netif.h>
+#include <esp_rom_gpio.h>
 #include <driver/gpio.h>
 #include <arpa/inet.h>
 #include <stdbool.h>
@@ -13,6 +16,7 @@ static const char *TAG = "Ethernet";
 static eth_on_connected_cb_t on_connected_cb = NULL;
 static eth_on_disconnected_cb_t on_disconnected_cb = NULL;
 static char *eth_hostname = NULL;
+static esp_netif_t *eth_netif = NULL;
 
 void eth_set_on_connected_cb(eth_on_connected_cb_t cb)
 {
@@ -50,7 +54,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         switch (event_id) {
         case ETHERNET_EVENT_START:
             if (eth_hostname)
-                tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_ETH, eth_hostname);
+                esp_netif_set_hostname(eth_netif, eth_hostname);
             break;
         case ETHERNET_EVENT_CONNECTED:
             ESP_LOGI(TAG, "Connected");
@@ -61,7 +65,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
                 on_disconnected_cb();
             break;
         default:
-            ESP_LOGD(TAG, "Unhandled Ethernet event (%d)", event_id);
+            ESP_LOGD(TAG, "Unhandled Ethernet event (%" PRId32 ")", event_id);
         }
     }
     else if (event_base == IP_EVENT)
@@ -78,7 +82,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
                 break;
             }
         default:
-            ESP_LOGD(TAG, "Unhandled IP event (%d)", event_id);
+            ESP_LOGD(TAG, "Unhandled IP event (%" PRId32 ")", event_id);
             break;
         }
     }
@@ -110,16 +114,17 @@ int eth_connect(eth_phy_t eth_phy, int8_t eth_phy_power_pin)
 {
 #if CONFIG_ETH_USE_ESP32_EMAC
     esp_netif_config_t cfg = ESP_NETIF_DEFAULT_ETH();
-    esp_netif_t *eth_netif = esp_netif_new(&cfg);
     eth_mac_config_t mac_config = ETH_MAC_DEFAULT_CONFIG();
+    eth_esp32_emac_config_t esp32_mac_config = ETH_ESP32_EMAC_DEFAULT_CONFIG();
     eth_phy_config_t phy_config = ETH_PHY_DEFAULT_CONFIG();
-    esp_eth_mac_t *mac = esp_eth_mac_new_esp32(&mac_config);
+    esp_eth_mac_t *mac = esp_eth_mac_new_esp32(&esp32_mac_config, &mac_config);
     esp_eth_config_t config = ETH_DEFAULT_CONFIG(mac, NULL);
     esp_eth_handle_t eth_handle = NULL;
 
+    eth_netif = esp_netif_new(&cfg);
     if (eth_phy_power_pin >= 0)
     {
-        gpio_pad_select_gpio(eth_phy_power_pin);
+        esp_rom_gpio_pad_select_gpio(eth_phy_power_pin);
         gpio_set_direction(eth_phy_power_pin, GPIO_MODE_OUTPUT);
         gpio_set_level(eth_phy_power_pin, 1);
         vTaskDelay(pdMS_TO_TICKS(10));
@@ -137,7 +142,7 @@ int eth_connect(eth_phy_t eth_phy, int8_t eth_phy_power_pin)
         break;
     case PHY_LAN8720:
         ESP_LOGI(TAG, "PHY config: LAN8720");
-        config.phy = esp_eth_phy_new_lan8720(&phy_config);
+        config.phy = esp_eth_phy_new_lan87xx(&phy_config);
         break;
     case PHY_DP83848:
         ESP_LOGI(TAG, "PHY config: DP83848");

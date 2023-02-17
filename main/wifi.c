@@ -5,6 +5,7 @@
 #include <esp_wifi.h>
 #include <esp_wpa2.h>
 #include <arpa/inet.h>
+#include <inttypes.h>
 #include <string.h>
 
 static const char *TAG = "WiFi";
@@ -12,6 +13,7 @@ static const char *TAG = "WiFi";
 static wifi_on_connected_cb_t on_connected_cb = NULL;
 static wifi_on_disconnected_cb_t on_disconnected_cb = NULL;
 static char *wifi_hostname = NULL;
+static esp_netif_t *wifi_netif = NULL;
 
 void wifi_set_on_connected_cb(wifi_on_connected_cb_t cb)
 {
@@ -48,7 +50,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         switch(event_id) {
         case WIFI_EVENT_STA_START:
             if (wifi_hostname)
-                tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, wifi_hostname);
+                esp_netif_set_hostname(wifi_netif, wifi_hostname);
             esp_wifi_connect();
             break;
         case WIFI_EVENT_STA_CONNECTED:
@@ -63,7 +65,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
             esp_wifi_connect();
             break;
         default:
-            ESP_LOGD(TAG, "Unhandled WiFi event (%d)", event_id);
+            ESP_LOGD(TAG, "Unhandled WiFi event (%" PRId32 ")", event_id);
             break;
         }
     }
@@ -84,7 +86,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
             ESP_LOGD(TAG, "Lost IP address");
             break;
         default:
-            ESP_LOGD(TAG, "Unhandled IP event (%d)", event_id);
+            ESP_LOGD(TAG, "Unhandled IP event (%" PRId32 ")", event_id);
             break;
         }
     }
@@ -126,7 +128,7 @@ int wifi_start_ap(const char *ssid, const char *password)
     else
         wifi_config.ap.authmode = WIFI_AUTH_OPEN;
 
-    esp_netif_create_default_wifi_ap();
+    wifi_netif = esp_netif_create_default_wifi_ap();
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
@@ -198,7 +200,7 @@ int wifi_initialize(void)
     ESP_LOGD(TAG, "Initializing WiFi station");
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_create_default_wifi_sta();
+    wifi_netif = esp_netif_create_default_wifi_sta();
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
