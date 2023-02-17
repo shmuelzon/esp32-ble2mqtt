@@ -101,10 +101,10 @@ static int ota_firmware_begin(void **handle)
         return OTA_ERR_FAILED_BEGIN;
     }
 
-    ESP_LOGI(TAG, "Running partition type 0x%0x subtype 0x%0x (offset 0x%08x)",
-        running->type, running->subtype, running->address);
-    ESP_LOGI(TAG, "Writing partition type 0x%0x subtype 0x%0x (offset 0x%08x)",
-        update->type, update->subtype, update->address);
+    ESP_LOGI(TAG, "Running partition type 0x%0x subtype 0x%0x (offset 0x%08"
+        PRIx32 ")", running->type, running->subtype, running->address);
+    ESP_LOGI(TAG, "Writing partition type 0x%0x subtype 0x%0x (offset 0x%08"
+        PRIx32 ")", update->type, update->subtype, update->address);
 
     err = esp_ota_begin(update, OTA_SIZE_UNKNOWN, &update_handle);
     if (err != ESP_OK)
@@ -145,7 +145,7 @@ static int ota_firmware_end(void *handle)
     }
 
     ESP_LOGI(TAG, "Setting boot partition type 0x%0x subtype 0x%0x (offset "
-        "0x%08x)", update->type, update->subtype, update->address);
+        "0x%08" PRIx32 ")", update->type, update->subtype, update->address);
 
     err = esp_ota_set_boot_partition(update);
     if (err != ESP_OK)
@@ -208,8 +208,9 @@ static void ota_task(void *pvParameter)
     if (esp_http_client_perform(handle) == ESP_OK)
         http_status = esp_http_client_get_status_code(handle);
 
-    ESP_LOGI(TAG, "HTTP request response: %d, read %d (%d) bytes", http_status,
-        esp_http_client_get_content_length(handle), ota_ctx.bytes_written);
+    ESP_LOGI(TAG, "HTTP request response: %d, read %" PRId64 " (%zu) bytes",
+        http_status, esp_http_client_get_content_length(handle),
+        ota_ctx.bytes_written);
 
     err = ota_close();
     if (http_status != 200 && http_status != 304)

@@ -12,6 +12,7 @@
 #include <esp_err.h>
 #include <esp_log.h>
 #include <esp_system.h>
+#include <esp_timer.h>
 #include <nvs.h>
 #include <nvs_flash.h>
 #include <mdns.h>
@@ -67,13 +68,13 @@ static void uptime_publish(void)
         return;
 
     /* Uptime (in seconds) */
-    sprintf(buf, "%lld", esp_timer_get_time() / 1000 / 1000);
+    sprintf(buf, "%" PRId64, esp_timer_get_time() / 1000 / 1000);
     snprintf(topic, MAX_TOPIC_LEN, "%s/Uptime", device_name_get());
     mqtt_publish(topic, (uint8_t *)buf, strlen(buf), config_mqtt_qos_get(),
         config_mqtt_retained_get());
 
     /* Free memory (in bytes) */
-    sprintf(buf, "%u", esp_get_free_heap_size());
+    sprintf(buf, "%" PRIu32, esp_get_free_heap_size());
     snprintf(topic, MAX_TOPIC_LEN, "%s/FreeMemory", device_name_get());
     mqtt_publish(topic, (uint8_t *)buf, strlen(buf), config_mqtt_qos_get(),
         config_mqtt_retained_get());
@@ -500,7 +501,7 @@ static uint32_t ble_on_passkey_requested(mac_addr_t mac)
     char *s = mactoa(mac);
     uint32_t passkey = config_ble_passkey_get(s);
 
-    ESP_LOGI(TAG, "Initiating pairing with %s using the passkey %u", s,
+    ESP_LOGI(TAG, "Initiating pairing with %s using the passkey %" PRIu32, s,
         passkey);
 
     return passkey;

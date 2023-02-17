@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <endian.h>
-#include <mbedtls/config.h>
 #include <mbedtls/cipher.h>
 #include <mbedtls/ccm.h>
 #include <mbedtls/error.h>
@@ -294,9 +293,9 @@ static void eddystone_metadata_get(uint8_t *adv_data, size_t adv_data_len,
             sprintf(s, "%d.%02ld", (int8_t)(temp >> 8),
                 lround((temp & 0xff) * 100 / 256.0));
             cb("Temperature", s, ctx);
-            sprintf(s, "%u", be32toh(eddystone->u.tlm.adv_cnt));
+            sprintf(s, "%" PRIu32, be32toh(eddystone->u.tlm.adv_cnt));
             cb("Count", s, ctx);
-            sprintf(s, "%u", be32toh(eddystone->u.tlm.sec_cnt));
+            sprintf(s, "%" PRIu32, be32toh(eddystone->u.tlm.sec_cnt));
             cb("Uptime", s, ctx);
         }
         else
@@ -539,7 +538,7 @@ static void mijia_sensor_metadata_get(uint8_t *adv_data, size_t adv_data_len,
         {
             uint32_t val = mijia_data_entry->data[0]
                 | (mijia_data_entry->data[1] << 8) | (mijia_data_entry->data[2] << 16);
-            sprintf(s, "%u", val);
+            sprintf(s, "%" PRIu32, val);
             cb("Illuminance", s, ctx);
         }
         else if (mijia_data_entry->data_type == MIJIA_SENSOR_DATA_TYPE_COND)
@@ -567,7 +566,7 @@ static void mijia_sensor_metadata_get(uint8_t *adv_data, size_t adv_data_len,
                 | (mijia_data_entry->data[1] << 8) | (mijia_data_entry->data[2] << 16);
             if (device_type == MIJIA_DEVICE_TYPE_CGPR1)
             {
-                sprintf(s, "%u", val);
+                sprintf(s, "%" PRIu32, val);
                 cb("Illuminance", s, ctx);
             }
             else if (device_type == MIJIA_DEVICE_TYPE_MJYD02YL)

@@ -576,8 +576,8 @@ int config_update_begin(config_update_handle_t **handle)
         return -1;
     }
 
-    ESP_LOGI(TAG, "Writing partition type 0x%0x subtype 0x%0x (offset 0x%08x)",
-        partition->type, partition->subtype, partition->address);
+    ESP_LOGI(TAG, "Writing partition type 0x%0x subtype 0x%0x (offset 0x%08"
+        PRIx32 ")", partition->type, partition->subtype, partition->address);
 
     /* Erase partition, needed before writing is allowed */
     if (esp_partition_erase_range(partition, 0, partition->size))

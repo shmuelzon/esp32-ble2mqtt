@@ -1,6 +1,5 @@
 #include "resolve.h"
 #include <esp_log.h>
-#include <mdns.h>
 #include <lwip/dns.h>
 #include <lwip/sockets.h>
 #include <lwip/netdb.h>

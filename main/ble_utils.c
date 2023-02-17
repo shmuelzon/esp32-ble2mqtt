@@ -2,6 +2,7 @@
 #include "config.h"
 #include "gatt.h"
 #include <math.h>
+#include <inttypes.h>
 #include <string.h>
 
 #define CASE_STR(x) case x: return #x
@@ -297,26 +298,26 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
             p += sprintf(p, "%s,", data[i] & 0x01 ? "true" : "false");
             break;
         case CHAR_TYPE_2BIT:
-            p += sprintf(p, "%hhu,", data[i] & 0x03);
+            p += sprintf(p, "%" PRIu8 ",", data[i] & 0x03);
             break;
         case CHAR_TYPE_4BIT:
         case CHAR_TYPE_NIBBLE:
-            p += sprintf(p, "%hhu,", data[i] & 0x0F);
+            p += sprintf(p, "%" PRIu8 ",", data[i] & 0x0F);
             break;
         case CHAR_TYPE_8BIT:
         case CHAR_TYPE_UINT8:
         case CHAR_TYPE_SINT8:
             if (*types == CHAR_TYPE_SINT8)
-                p += sprintf(p, "%hhd,", data[i]);
+                p += sprintf(p, "%" PRId8 ",", data[i]);
             else
-                p += sprintf(p, "%hhu,", data[i]);
+                p += sprintf(p, "%" PRIu8 ",", data[i]);
 
             break;
         case CHAR_TYPE_UINT12:
         {
             uint16_t tmp = (data[i + 1] << 8) | data[i];
 
-            p += sprintf(p, "%hu,", tmp & 0x0FFF);
+            p += sprintf(p, "%" PRIu16 ",", tmp & 0x0FFF);
             break;
         }
         case CHAR_TYPE_16BIT:
@@ -326,9 +327,9 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
             uint16_t tmp = (data[i + 1] << 8) | data[i];
 
             if (*types == CHAR_TYPE_SINT16)
-                p += sprintf(p, "%hd,", tmp);
+                p += sprintf(p, "%" PRId16 ",", tmp);
             else
-                p += sprintf(p, "%hu,", tmp);
+                p += sprintf(p, "%" PRIu16 ",", tmp);
 
             break;
         }
@@ -339,9 +340,9 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
             uint32_t tmp = (data[i + 2] << 16) | (data[i + 1] << 8) | data[i];
 
             if (*types == CHAR_TYPE_SINT24)
-                p += sprintf(p, "%d,", (int32_t)tmp << 8 >> 8);
+                p += sprintf(p, "%" PRId32 ",", (int32_t)tmp << 8 >> 8);
             else
-                p += sprintf(p, "%u,", tmp);
+                p += sprintf(p, "%" PRIu32 ",", tmp);
 
             break;
         }
@@ -353,9 +354,9 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
                 (data[i + 1] << 8) | data[i];
 
             if (*types == CHAR_TYPE_SINT32)
-                p += sprintf(p, "%d,", tmp);
+                p += sprintf(p, "%" PRId32 ",", tmp);
             else
-                p += sprintf(p, "%u,", tmp);
+                p += sprintf(p, "%" PRIu32 ",", tmp);
 
             break;
         }
@@ -364,7 +365,7 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
             uint64_t tmp = ((uint64_t)data[i + 4] << 32) | (data[i + 3] << 24) |
                 (data[i + 2] << 16) | (data[i + 1] << 8) | data[i];
 
-            p += sprintf(p, "%llu,", tmp);
+            p += sprintf(p, "%" PRIu64 ",", tmp);
 
             break;
         }
@@ -374,7 +375,7 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
                 ((uint64_t)data[i + 4] << 32) | (data[i + 3] << 24) |
                 (data[i + 2] << 16) | (data[i + 1] << 8) | data[i];
 
-            p += sprintf(p, "%llu,", tmp);
+            p += sprintf(p, "%" PRIu64 ",", tmp);
 
             break;
         }
@@ -444,7 +445,7 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
     }
 
     for (; i < len; i++)
-        p += sprintf(p, "%u,", data[i]);
+        p += sprintf(p, "%" PRIu8 ",", data[i]);
 
     *(p - 1) = '\0';
     return buf;
