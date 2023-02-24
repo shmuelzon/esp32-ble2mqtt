@@ -873,14 +873,19 @@ ble_characteristic_t *ble_device_characteristic_add(ble_service_t *service,
 }
 
 ble_characteristic_t *ble_device_characteristic_find_by_uuid(
-    ble_service_t *service, ble_uuid_t uuid)
+    ble_service_t *service, ble_uuid_t uuid, uint16_t index)
 {
     ble_characteristic_t *cur;
 
     for (cur = service->characteristics; cur; cur = cur->next)
     {
-        if (!memcmp(cur->uuid, uuid, sizeof(ble_uuid_t)))
+        if (memcmp(cur->uuid, uuid, sizeof(ble_uuid_t)) == 0){
+            if(index > 0){
+                index--;
+                continue;
+            }
             break;
+        }
     }
 
     return cur;
@@ -920,8 +925,10 @@ void ble_device_characteristics_free(ble_characteristic_t **list)
 
 int ble_device_info_get_by_conn_id_handle(ble_device_t *list, uint16_t conn_id,
     uint16_t handle, ble_device_t **device, ble_service_t **service,
-    ble_characteristic_t **characteristic)
+    ble_characteristic_t **characteristic, uint16_t *index)
 {
+    ble_characteristic_t *known_characteristic;
+
     if (!(*device = ble_device_find_by_conn_id(list, conn_id)))
         return -1;
     
@@ -930,8 +937,19 @@ int ble_device_info_get_by_conn_id_handle(ble_device_t *list, uint16_t conn_id,
         for (*characteristic = (*service)->characteristics; *characteristic;
             *characteristic = (*characteristic)->next)
         {
-            if ((*characteristic)->handle == handle)
+            if ((*characteristic)->handle == handle){
+                *index = 0;
+                for(
+                    known_characteristic = (*service)->characteristics; 
+                    known_characteristic != (*characteristic);
+                    known_characteristic = known_characteristic->next
+                ){
+                    if(memcmp(known_characteristic->uuid, (*characteristic)->uuid, sizeof(ble_uuid_t)) == 0){
+                        (*index)++;
+                    }
+                }
                 return 0;
+            }
         }
     }
 

@@ -31,10 +31,10 @@ typedef void (*ble_on_device_connected_cb_t)(mac_addr_t mac);
 typedef void (*ble_on_device_disconnected_cb_t)(mac_addr_t mac);
 typedef void (*ble_on_device_services_discovered_cb_t)(mac_addr_t mac);
 typedef void (*ble_on_device_characteristic_found_cb_t)(mac_addr_t mac,
-    ble_uuid_t service_uuid, ble_uuid_t characteristic_uuid,
+    ble_uuid_t service_uuid, ble_uuid_t characteristic_uuid, uint16_t index,
     uint8_t properties);
 typedef void (*ble_on_device_characteristic_value_cb_t)(mac_addr_t mac,
-    ble_uuid_t service, ble_uuid_t characteristic, uint8_t *value,
+    ble_uuid_t service, ble_uuid_t characteristic, uint16_t index, uint8_t *value,
     size_t value_len);
 typedef uint32_t (*ble_on_passkey_requested_cb_t)(mac_addr_t mac);
 
@@ -65,13 +65,13 @@ int ble_foreach_characteristic(mac_addr_t mac,
     ble_on_device_characteristic_found_cb_t cb);
 
 int ble_characteristic_read(mac_addr_t mac, ble_uuid_t service_uuid,
-    ble_uuid_t characteristic_uuid);
+    ble_uuid_t characteristic_uuid, uint16_t index);
 int ble_characteristic_write(mac_addr_t mac, ble_uuid_t service_uuid,
-    ble_uuid_t characteristic_uuid, const uint8_t *value, size_t value_len);
+    ble_uuid_t characteristic_uuid, uint16_t index, const uint8_t *value, size_t value_len);
 int ble_characteristic_notify_register(mac_addr_t mac, ble_uuid_t service_uuid,
-    ble_uuid_t characteristic_uuid);
+    ble_uuid_t characteristic_uuid, uint16_t index);
 int ble_characteristic_notify_unregister(mac_addr_t mac,
-    ble_uuid_t service_uuid, ble_uuid_t characteristic_uuid);
+    ble_uuid_t service_uuid, ble_uuid_t characteristic_uuid, uint16_t index);
 
 /* Management */
 ble_dev_t *ble_devices_list_get(size_t *number_of_devices);

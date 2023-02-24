@@ -442,10 +442,11 @@ int ble_foreach_characteristic(mac_addr_t mac,
     ble_device_t *dev;
     ble_service_t *service;
     ble_characteristic_t *characteristic;
+    ble_characteristic_t *characteristic_known;
 
     xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
 
-    if (!(dev = ble_device_find_by_mac(devices_list, mac)))
+    if ((dev = ble_device_find_by_mac(devices_list, mac)) == NULL)
     {
         xSemaphoreGiveRecursive(devices_list_semaphore);
         return -1;
@@ -460,7 +461,20 @@ int ble_foreach_characteristic(mac_addr_t mac,
         for (characteristic = service->characteristics; characteristic;
             characteristic = characteristic->next)
         {
-            cb(mac, service->uuid, characteristic->uuid,
+            uint16_t index = 0;
+
+            // search all known characteristics and count duplicate UUID's
+            for(
+                characteristic_known = service->characteristics; 
+                characteristic_known != characteristic;
+                characteristic_known = characteristic_known->next
+            ){
+                if(memcmp(characteristic_known->uuid, characteristic->uuid, sizeof(ble_uuid_t)) == 0){
+                    index++;
+                }
+            }
+
+            cb(mac, service->uuid, characteristic->uuid, index,
                 characteristic->properties);
         }
     }
@@ -470,7 +484,7 @@ int ble_foreach_characteristic(mac_addr_t mac,
 }
 
 int ble_characteristic_read(mac_addr_t mac, ble_uuid_t service_uuid,
-    ble_uuid_t characteristic_uuid)
+    ble_uuid_t characteristic_uuid, uint16_t index)
 {
     ble_device_t *device;
     ble_service_t *service;
@@ -486,7 +500,7 @@ int ble_characteristic_read(mac_addr_t mac, ble_uuid_t service_uuid,
         goto Exit;
 
     if (!(characteristic = ble_device_characteristic_find_by_uuid(service,
-        characteristic_uuid)))
+        characteristic_uuid, index)))
     {
         goto Exit;
     }
@@ -504,7 +518,7 @@ Exit:
 }
 
 int ble_characteristic_write(mac_addr_t mac, ble_uuid_t service_uuid,
-    ble_uuid_t characteristic_uuid, const uint8_t *value, size_t value_len)
+    ble_uuid_t characteristic_uuid, uint16_t index, const uint8_t *value, size_t value_len)
 {
     ble_device_t *device;
     ble_service_t *service;
@@ -520,7 +534,7 @@ int ble_characteristic_write(mac_addr_t mac, ble_uuid_t service_uuid,
         goto Exit;
 
     if (!(characteristic = ble_device_characteristic_find_by_uuid(service,
-        characteristic_uuid)))
+        characteristic_uuid, index)))
     {
         goto Exit;
     }
@@ -540,7 +554,7 @@ Exit:
 }
 
 int ble_characteristic_notify_register(mac_addr_t mac, ble_uuid_t service_uuid,
-    ble_uuid_t characteristic_uuid)
+    ble_uuid_t characteristic_uuid, uint16_t index)
 {
     uint16_t enable = htole16(0x1);
     ble_device_t *device;
@@ -557,7 +571,7 @@ int ble_characteristic_notify_register(mac_addr_t mac, ble_uuid_t service_uuid,
         goto Exit;
 
     if (!(characteristic = ble_device_characteristic_find_by_uuid(service,
-        characteristic_uuid)))
+        characteristic_uuid, index)))
     {
         goto Exit;
     }
@@ -589,7 +603,7 @@ Exit:
 }
 
 int ble_characteristic_notify_unregister(mac_addr_t mac,
-    ble_uuid_t service_uuid, ble_uuid_t characteristic_uuid)
+    ble_uuid_t service_uuid, ble_uuid_t characteristic_uuid, uint16_t index)
 {
     ble_device_t *device;
     ble_service_t *service;
@@ -605,7 +619,7 @@ int ble_characteristic_notify_unregister(mac_addr_t mac,
         goto Exit;
 
     if (!(characteristic = ble_device_characteristic_find_by_uuid(service,
-        characteristic_uuid)))
+        characteristic_uuid, index)))
     {
         goto Exit;
     }
@@ -899,6 +913,7 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
         ble_device_t *device;
         ble_service_t *service;
         ble_characteristic_t *characteristic;
+        uint16_t index;
 
         need_dequeue = 1;
 
@@ -936,10 +951,10 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
         }
         else if (!ble_device_info_get_by_conn_id_handle(devices_list,
             param->read.conn_id, param->read.handle, &device, &service,
-            &characteristic) && on_device_characteristic_value_cb)
+            &characteristic, &index) && on_device_characteristic_value_cb)
         {
             on_device_characteristic_value_cb(device->mac, service->uuid,
-                characteristic->uuid, param->read.value, param->read.value_len);
+                characteristic->uuid, index, param->read.value, param->read.value_len);
         }
 
         xSemaphoreGiveRecursive(devices_list_semaphore);
@@ -973,15 +988,16 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
         ble_device_t *device;
         ble_service_t *service;
         ble_characteristic_t *characteristic;
+        uint16_t index;
 
         xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
 
         if (!ble_device_info_get_by_conn_id_handle(devices_list,
             param->notify.conn_id, param->notify.handle, &device, &service,
-            &characteristic) && on_device_characteristic_value_cb)
+            &characteristic, &index) && on_device_characteristic_value_cb)
         {
             on_device_characteristic_value_cb(device->mac, service->uuid,
-                characteristic->uuid, param->notify.value,
+                characteristic->uuid, index, param->notify.value,
                 param->notify.value_len);
         }
 
