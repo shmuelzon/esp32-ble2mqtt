@@ -127,13 +127,21 @@ int atouuid(const char *str, ble_uuid_t uuid)
         &uuid[5], &uuid[4], &uuid[3], &uuid[2], &uuid[1], &uuid[0]) != 16;
 }
 
+bool ble_uuid_equal(ble_uuid_t uuid1, ble_uuid_t uuid2){
+    return memcmp(uuid1, uuid2, sizeof(ble_uuid_t)) == 0;
+}
+
+bool ble_mac_equal(ble_mac_t mac1, ble_mac_t mac2){
+    return memcmp(mac1, mac2, sizeof(ble_mac_t)) == 0;
+}
+
 static service_desc_t *ble_get_sig_service(ble_uuid_t uuid)
 {
     service_desc_t *p;
 
     for (p = services; p->name; p++)
     {
-        if (memcmp(p->uuid, uuid, sizeof(ble_uuid_t)))
+        if (!ble_uuid_equal(p->uuid, uuid))
             continue;
 
         return p;
@@ -148,7 +156,7 @@ static characteristic_desc_t *ble_get_sig_characteristic(ble_uuid_t uuid)
 
     for (p = characteristics; p->name; p++)
     {
-        if (memcmp(p->uuid, uuid, sizeof(ble_uuid_t)))
+        if (!ble_uuid_equal(p->uuid, uuid))
             continue;
 
         return p;
@@ -707,7 +715,7 @@ ble_device_t *ble_device_find_by_mac(ble_device_t *list, mac_addr_t mac)
 
     for (cur = list; cur; cur = cur->next)
     {
-        if (!memcmp(cur->mac, mac, sizeof(mac_addr_t)))
+        if (ble_mac_equal(cur->mac, mac))
             break;
     }
 
@@ -739,7 +747,7 @@ void ble_device_remove_by_mac(ble_device_t **list, mac_addr_t mac)
 
     for (cur = list; *cur; cur = &(*cur)->next)
     {
-        if (!memcmp((*cur)->mac, mac, sizeof(mac_addr_t)))
+        if (ble_mac_equal((*cur)->mac, mac))
             break;
     }
 
@@ -828,7 +836,7 @@ ble_service_t *ble_device_service_find(ble_device_t *device, ble_uuid_t uuid)
 
     for (cur = device->services; cur; cur = cur->next)
     {
-        if (!memcmp(cur->uuid, uuid, sizeof(ble_uuid_t)))
+        if (ble_uuid_equal(cur->uuid, uuid))
             break;
     }
 
@@ -879,7 +887,7 @@ ble_characteristic_t *ble_device_characteristic_find_by_uuid(
 
     for (cur = service->characteristics; cur; cur = cur->next)
     {
-        if (!memcmp(cur->uuid, uuid, sizeof(ble_uuid_t)))
+        if (ble_uuid_equal(cur->uuid, uuid))
             break;
     }
 
