@@ -91,6 +91,7 @@ void ble_device_characteristic_free(ble_characteristic_t *characteristic);
 void ble_device_characteristics_free(ble_characteristic_t **list);
 
 bool ble_uuid_equal(ble_uuid_t uuid1, ble_uuid_t uuid2);
+bool ble_mac_equal(ble_mac_t mac1, ble_mac_t mac2);
 
 int ble_device_info_get_by_conn_id_handle(ble_device_t *list, uint16_t conn_id,
     uint16_t handle, ble_device_t **device, ble_service_t **service,
