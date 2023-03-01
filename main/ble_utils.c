@@ -131,8 +131,8 @@ bool ble_uuid_equal(ble_uuid_t uuid1, ble_uuid_t uuid2){
     return memcmp(uuid1, uuid2, sizeof(ble_uuid_t)) == 0;
 }
 
-bool ble_mac_equal(ble_mac_t mac1, ble_mac_t mac2){
-    return memcmp(mac1, mac2, sizeof(ble_mac_t)) == 0;
+bool ble_mac_equal(mac_addr_t mac1, mac_addr_t mac2){
+    return memcmp(mac1, mac2, sizeof(mac_addr_t)) == 0;
 }
 
 static service_desc_t *ble_get_sig_service(ble_uuid_t uuid)
