@@ -141,7 +141,7 @@ static void ble_operation_remove_by_mac(ble_operation_t **queue,
 
     while (*cur)
     {
-        if (!memcmp((*cur)->device->mac, mac, sizeof(mac_addr_t)))
+        if (ble_mac_equal((*cur)->device->mac, mac))
         {
             tmp = *cur;
             *cur = (*cur)->next;
