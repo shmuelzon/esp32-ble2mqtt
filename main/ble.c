@@ -461,20 +461,7 @@ int ble_foreach_characteristic(mac_addr_t mac,
         for (characteristic = service->characteristics; characteristic;
             characteristic = characteristic->next)
         {
-            uint16_t index = 0;
-
-            // search all known characteristics and count duplicate UUID's
-            for(
-                characteristic_known = service->characteristics; 
-                characteristic_known != characteristic;
-                characteristic_known = characteristic_known->next
-            ){
-                if(memcmp(characteristic_known->uuid, characteristic->uuid, sizeof(ble_uuid_t)) == 0){
-                    index++;
-                }
-            }
-
-            cb(mac, service->uuid, characteristic->uuid, index,
+            cb(mac, service->uuid, characteristic->uuid, 
                 characteristic->properties);
         }
     }
@@ -913,7 +900,6 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
         ble_device_t *device;
         ble_service_t *service;
         ble_characteristic_t *characteristic;
-        uint16_t index;
 
         need_dequeue = 1;
 
@@ -951,7 +937,7 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
         }
         else if (!ble_device_info_get_by_conn_id_handle(devices_list,
             param->read.conn_id, param->read.handle, &device, &service,
-            &characteristic, &index) && on_device_characteristic_value_cb)
+            &characteristic) && on_device_characteristic_value_cb)
         {
             on_device_characteristic_value_cb(device->mac, service->uuid,
                 characteristic->uuid, index, param->read.value, param->read.value_len);
@@ -988,13 +974,12 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
         ble_device_t *device;
         ble_service_t *service;
         ble_characteristic_t *characteristic;
-        uint16_t index;
 
         xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
 
         if (!ble_device_info_get_by_conn_id_handle(devices_list,
             param->notify.conn_id, param->notify.handle, &device, &service,
-            &characteristic, &index) && on_device_characteristic_value_cb)
+            &characteristic) && on_device_characteristic_value_cb)
         {
             on_device_characteristic_value_cb(device->mac, service->uuid,
                 characteristic->uuid, index, param->notify.value,

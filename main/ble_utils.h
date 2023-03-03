@@ -23,6 +23,7 @@ typedef uint8_t ble_uuid_t[16];
 typedef struct ble_characteristic_t {
     struct ble_characteristic_t *next;
     ble_uuid_t uuid;
+    uint8_t index;
     uint16_t handle;
     uint8_t properties;
     uint16_t client_config_handle;
@@ -95,6 +96,6 @@ bool ble_mac_equal(mac_addr_t mac1, mac_addr_t mac2);
 
 int ble_device_info_get_by_conn_id_handle(ble_device_t *list, uint16_t conn_id,
     uint16_t handle, ble_device_t **device, ble_service_t **service,
-    ble_characteristic_t **characteristic, uint16_t *index);
+    ble_characteristic_t **characteristic);
 
 #endif

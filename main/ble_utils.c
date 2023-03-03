@@ -873,8 +873,14 @@ ble_characteristic_t *ble_device_characteristic_add(ble_service_t *service,
     characteristic->handle = handle;
     characteristic->properties = properties;
     characteristic->client_config_handle = 0;
+    characteristic->index = 0;
 
-    for (cur = &service->characteristics; *cur; cur = &(*cur)->next);
+    for (cur = &service->characteristics; *cur; cur = &(*cur)->next){
+        if ble_uuid_equal(cur->uuid, uuid){
+            characteristic->index++;
+        }
+    };
+
     *cur = characteristic;
 
     return characteristic;
@@ -887,11 +893,7 @@ ble_characteristic_t *ble_device_characteristic_find_by_uuid(
 
     for (cur = service->characteristics; cur; cur = cur->next)
     {
-        if (ble_uuid_equal(cur->uuid, uuid)){
-            if(index > 0){
-                index--;
-                continue;
-            }
+        if (ble_uuid_equal(cur->uuid, uuid) && cur->index == index){
             break;
         }
     }
@@ -933,7 +935,7 @@ void ble_device_characteristics_free(ble_characteristic_t **list)
 
 int ble_device_info_get_by_conn_id_handle(ble_device_t *list, uint16_t conn_id,
     uint16_t handle, ble_device_t **device, ble_service_t **service,
-    ble_characteristic_t **characteristic, uint16_t *index)
+    ble_characteristic_t **characteristic)
 {
     ble_characteristic_t *known_characteristic;
 
@@ -946,16 +948,6 @@ int ble_device_info_get_by_conn_id_handle(ble_device_t *list, uint16_t conn_id,
             *characteristic = (*characteristic)->next)
         {
             if ((*characteristic)->handle == handle){
-                *index = 0;
-                for(
-                    known_characteristic = (*service)->characteristics; 
-                    known_characteristic != (*characteristic);
-                    known_characteristic = known_characteristic->next
-                ){
-                    if(memcmp(known_characteristic->uuid, (*characteristic)->uuid, sizeof(ble_uuid_t)) == 0){
-                        (*index)++;
-                    }
-                }
                 return 0;
             }
         }
