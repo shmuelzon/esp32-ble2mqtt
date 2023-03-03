@@ -446,7 +446,7 @@ int ble_foreach_characteristic(mac_addr_t mac,
 
     xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
 
-    if ((dev = ble_device_find_by_mac(devices_list, mac)) == NULL)
+    if (!(dev = ble_device_find_by_mac(devices_list, mac)))
     {
         xSemaphoreGiveRecursive(devices_list_semaphore);
         return -1;
