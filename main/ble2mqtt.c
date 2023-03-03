@@ -29,6 +29,7 @@ typedef struct {
     mac_addr_t mac;
     ble_uuid_t service;
     ble_uuid_t characteristic;
+    uint8_t index;
 } mqtt_ctx_t;
 
 static const char *device_name_get(void)
@@ -445,7 +446,7 @@ static void ble_on_characteristic_found(mac_addr_t mac, ble_uuid_t service_uuid,
     ble_uuid_t characteristic_uuid, uint8_t index, uint8_t properties)
 {
     ESP_LOGI(TAG, "Found new characteristic: service: " UUID_FMT
-      ", characteristic: " UUID_FMT ", index: " PRIu16 ", properties: 0x%x",
+      ", characteristic: " UUID_FMT ", index: %u, properties: 0x%x",
       UUID_PARAM(service_uuid), UUID_PARAM(characteristic_uuid), index, properties);
     char *topic;
 

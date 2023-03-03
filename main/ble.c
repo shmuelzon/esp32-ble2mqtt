@@ -442,7 +442,6 @@ int ble_foreach_characteristic(mac_addr_t mac,
     ble_device_t *dev;
     ble_service_t *service;
     ble_characteristic_t *characteristic;
-    ble_characteristic_t *characteristic_known;
 
     xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
 
@@ -462,7 +461,7 @@ int ble_foreach_characteristic(mac_addr_t mac,
             characteristic = characteristic->next)
         {
             cb(mac, service->uuid, characteristic->uuid, 
-                characteristic->properties);
+                characteristic->index, characteristic->properties);
         }
     }
 
@@ -940,7 +939,7 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
             &characteristic) && on_device_characteristic_value_cb)
         {
             on_device_characteristic_value_cb(device->mac, service->uuid,
-                characteristic->uuid, index, param->read.value, param->read.value_len);
+                characteristic->uuid, characteristic->index, param->read.value, param->read.value_len);
         }
 
         xSemaphoreGiveRecursive(devices_list_semaphore);
@@ -982,7 +981,7 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
             &characteristic) && on_device_characteristic_value_cb)
         {
             on_device_characteristic_value_cb(device->mac, service->uuid,
-                characteristic->uuid, index, param->notify.value,
+                characteristic->uuid, characteristic->index, param->notify.value,
                 param->notify.value_len);
         }
 

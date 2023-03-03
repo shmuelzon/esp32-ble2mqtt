@@ -876,7 +876,7 @@ ble_characteristic_t *ble_device_characteristic_add(ble_service_t *service,
     characteristic->index = 0;
 
     for (cur = &service->characteristics; *cur; cur = &(*cur)->next){
-        if ble_uuid_equal(cur->uuid, uuid){
+        if (ble_uuid_equal((*cur)->uuid, uuid)){
             characteristic->index++;
         }
     };
@@ -937,8 +937,6 @@ int ble_device_info_get_by_conn_id_handle(ble_device_t *list, uint16_t conn_id,
     uint16_t handle, ble_device_t **device, ble_service_t **service,
     ble_characteristic_t **characteristic)
 {
-    ble_characteristic_t *known_characteristic;
-
     if (!(*device = ble_device_find_by_conn_id(list, conn_id)))
         return -1;
     
