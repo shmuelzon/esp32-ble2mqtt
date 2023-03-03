@@ -85,7 +85,7 @@ void ble_device_services_free(ble_service_t **list);
 ble_characteristic_t *ble_device_characteristic_add(ble_service_t *service,
     ble_uuid_t uuid, uint16_t handle, uint8_t properties);
 ble_characteristic_t *ble_device_characteristic_find_by_uuid(
-    ble_service_t *service, ble_uuid_t uuid, uint16_t index);
+    ble_service_t *service, ble_uuid_t uuid, uint8_t index);
 ble_characteristic_t *ble_device_characteristic_find_by_handle(
     ble_service_t *service, uint16_t handle);
 void ble_device_characteristic_free(ble_characteristic_t *characteristic);

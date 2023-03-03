@@ -29,7 +29,6 @@ typedef struct {
     mac_addr_t mac;
     ble_uuid_t service;
     ble_uuid_t characteristic;
-    uint16_t index;
 } mqtt_ctx_t;
 
 static const char *device_name_get(void)
@@ -313,7 +312,7 @@ static void ble_publish_connected(mac_addr_t mac, uint8_t is_connected)
 }
 
 static mqtt_ctx_t *ble_ctx_gen(mac_addr_t mac, ble_uuid_t service,
-    ble_uuid_t characteristic, uint16_t index)
+    ble_uuid_t characteristic, uint8_t index)
 {
     mqtt_ctx_t *ctx = malloc(sizeof(mqtt_ctx_t));
 
@@ -383,7 +382,7 @@ static char *ble_topic_suffix(char *base, uint8_t is_get)
 }
 
 static char *ble_topic(mac_addr_t mac, ble_uuid_t service_uuid,
-    ble_uuid_t characteristic_uuid, uint16_t index)
+    ble_uuid_t characteristic_uuid, uint8_t index)
 {
     static char topic[MAX_TOPIC_LEN];
     int i = 0;
@@ -443,7 +442,7 @@ static void _ble_on_mqtt_set(const char *topic, const uint8_t *payload,
     size_t len, void *ctx);
 
 static void ble_on_characteristic_found(mac_addr_t mac, ble_uuid_t service_uuid,
-    ble_uuid_t characteristic_uuid, uint16_t index, uint8_t properties)
+    ble_uuid_t characteristic_uuid, uint8_t index, uint8_t properties)
 {
     ESP_LOGI(TAG, "Found new characteristic: service: " UUID_FMT
       ", characteristic: " UUID_FMT ", index: " PRIu16 ", properties: 0x%x",
@@ -490,7 +489,7 @@ static void ble_on_device_services_discovered(mac_addr_t mac)
 }
 
 static void ble_on_device_characteristic_value(mac_addr_t mac,
-    ble_uuid_t service, ble_uuid_t characteristic, uint16_t index, uint8_t *value,
+    ble_uuid_t service, ble_uuid_t characteristic, uint8_t index, uint8_t *value,
     size_t value_len)
 {
     char *topic = ble_topic(mac, service, characteristic, index);
@@ -571,7 +570,7 @@ typedef struct {
             mac_addr_t mac;
             ble_uuid_t service;
             ble_uuid_t characteristic;
-            uint16_t index;
+            uint8_t index;
             uint8_t *value;
             size_t value_len;
         } ble_device_characteristic_value;
@@ -866,7 +865,7 @@ static void _ble_on_device_services_discovered(mac_addr_t mac)
 }
 
 static void _ble_on_device_characteristic_value(mac_addr_t mac,
-    ble_uuid_t service, ble_uuid_t characteristic, uint16_t index, uint8_t *value,
+    ble_uuid_t service, ble_uuid_t characteristic, uint8_t index, uint8_t *value,
     size_t value_len)
 {
     event_t *event = malloc(sizeof(*event));

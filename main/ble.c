@@ -471,7 +471,7 @@ int ble_foreach_characteristic(mac_addr_t mac,
 }
 
 int ble_characteristic_read(mac_addr_t mac, ble_uuid_t service_uuid,
-    ble_uuid_t characteristic_uuid, uint16_t index)
+    ble_uuid_t characteristic_uuid, uint8_t index)
 {
     ble_device_t *device;
     ble_service_t *service;
@@ -505,7 +505,7 @@ Exit:
 }
 
 int ble_characteristic_write(mac_addr_t mac, ble_uuid_t service_uuid,
-    ble_uuid_t characteristic_uuid, uint16_t index, const uint8_t *value, size_t value_len)
+    ble_uuid_t characteristic_uuid, uint8_t index, const uint8_t *value, size_t value_len)
 {
     ble_device_t *device;
     ble_service_t *service;
@@ -541,7 +541,7 @@ Exit:
 }
 
 int ble_characteristic_notify_register(mac_addr_t mac, ble_uuid_t service_uuid,
-    ble_uuid_t characteristic_uuid, uint16_t index)
+    ble_uuid_t characteristic_uuid, uint8_t index)
 {
     uint16_t enable = htole16(0x1);
     ble_device_t *device;
@@ -590,7 +590,7 @@ Exit:
 }
 
 int ble_characteristic_notify_unregister(mac_addr_t mac,
-    ble_uuid_t service_uuid, ble_uuid_t characteristic_uuid, uint16_t index)
+    ble_uuid_t service_uuid, ble_uuid_t characteristic_uuid, uint8_t index)
 {
     ble_device_t *device;
     ble_service_t *service;
