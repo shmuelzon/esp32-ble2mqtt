@@ -876,7 +876,6 @@ ble_characteristic_t *ble_device_characteristic_add(ble_service_t *service,
     characteristic->index = index;
 
     for (cur = &service->characteristics; *cur; cur = &(*cur)->next);
-
     *cur = characteristic;
 
     return characteristic;
