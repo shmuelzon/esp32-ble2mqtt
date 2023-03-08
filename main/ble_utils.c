@@ -863,7 +863,7 @@ void ble_device_services_free(ble_service_t **list)
 }
 
 ble_characteristic_t *ble_device_characteristic_add(ble_service_t *service,
-    ble_uuid_t uuid, uint16_t handle, uint8_t properties)
+    ble_uuid_t uuid, uint8_t index, uint16_t handle, uint8_t properties)
 {
     ble_characteristic_t *characteristic, **cur;
 
@@ -873,13 +873,9 @@ ble_characteristic_t *ble_device_characteristic_add(ble_service_t *service,
     characteristic->handle = handle;
     characteristic->properties = properties;
     characteristic->client_config_handle = 0;
-    characteristic->index = 0;
+    characteristic->index = index;
 
-    for (cur = &service->characteristics; *cur; cur = &(*cur)->next){
-        if (ble_uuid_equal((*cur)->uuid, uuid)){
-            characteristic->index++;
-        }
-    };
+    for (cur = &service->characteristics; *cur; cur = &(*cur)->next);
 
     *cur = characteristic;
 

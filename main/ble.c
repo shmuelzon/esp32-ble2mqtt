@@ -423,8 +423,18 @@ static void ble_update_cache(ble_device_t *dev)
         else if (db[i].type == ESP_GATT_DB_CHARACTERISTIC)
         {
             esp_uuid_to_bt_uuid(db[i].uuid, characteristic_uuid);
+
+            uint8_t index = 0;
+
+            for (ble_characteristic_t *cur = service->characteristics; cur; cur = cur->next){
+                if (ble_uuid_equal(cur->uuid, characteristic_uuid)){
+                    index++;
+                }
+            };
+
             characteristic = ble_device_characteristic_add(service,
-                characteristic_uuid, db[i].attribute_handle, db[i].properties);
+                characteristic_uuid, index, db[i].attribute_handle,
+                db[i].properties);
         }
         else if (db[i].type == ESP_GATT_DB_DESCRIPTOR &&
             db[i].uuid.len == ESP_UUID_LEN_16 &&
