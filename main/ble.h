@@ -34,8 +34,8 @@ typedef void (*ble_on_device_characteristic_found_cb_t)(mac_addr_t mac,
     ble_uuid_t service_uuid, ble_uuid_t characteristic_uuid, uint8_t index,
     uint8_t properties);
 typedef void (*ble_on_device_characteristic_value_cb_t)(mac_addr_t mac,
-    ble_uuid_t service, ble_uuid_t characteristic, uint8_t index, uint8_t *value,
-    size_t value_len);
+    ble_uuid_t service, ble_uuid_t characteristic, uint8_t index,
+    uint8_t *value, size_t value_len);
 typedef uint32_t (*ble_on_passkey_requested_cb_t)(mac_addr_t mac);
 
 /* Event handlers */
@@ -67,7 +67,8 @@ int ble_foreach_characteristic(mac_addr_t mac,
 int ble_characteristic_read(mac_addr_t mac, ble_uuid_t service_uuid,
     ble_uuid_t characteristic_uuid, uint8_t index);
 int ble_characteristic_write(mac_addr_t mac, ble_uuid_t service_uuid,
-    ble_uuid_t characteristic_uuid, uint8_t index, const uint8_t *value, size_t value_len);
+    ble_uuid_t characteristic_uuid, uint8_t index, const uint8_t *value,
+    size_t value_len);
 int ble_characteristic_notify_register(mac_addr_t mac, ble_uuid_t service_uuid,
     ble_uuid_t characteristic_uuid, uint8_t index);
 int ble_characteristic_notify_unregister(mac_addr_t mac,

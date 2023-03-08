@@ -300,7 +300,7 @@ static void ble_publish_connected(mac_addr_t mac, uint8_t is_connected)
     if (is_connected)
     {
         const char *device_name = device_name_get();
-        
+
         /* Subscribe for other devices claiming this device is disconnected */
         mqtt_subscribe(topic, config_mqtt_qos_get(), _ble_on_mqtt_connected_cb,
             strdup(mactoa(mac)), free);
@@ -866,8 +866,8 @@ static void _ble_on_device_services_discovered(mac_addr_t mac)
 }
 
 static void _ble_on_device_characteristic_value(mac_addr_t mac,
-    ble_uuid_t service, ble_uuid_t characteristic, uint8_t index, uint8_t *value,
-    size_t value_len)
+    ble_uuid_t service, ble_uuid_t characteristic, uint8_t index,
+    uint8_t *value, size_t value_len)
 {
     event_t *event = malloc(sizeof(*event));
 
@@ -880,7 +880,6 @@ static void _ble_on_device_characteristic_value(mac_addr_t mac,
     event->ble_device_characteristic_value.value = malloc(value_len);
     memcpy(event->ble_device_characteristic_value.value, value, value_len);
     event->ble_device_characteristic_value.value_len = value_len;
-
     event->ble_device_characteristic_value.index = index;
 
     ESP_LOGD(TAG, "Queuing event BLE_DEVICE_CHARACTERISTIC_VALUE (" MAC_FMT ", "

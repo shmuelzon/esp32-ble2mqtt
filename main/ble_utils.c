@@ -122,7 +122,7 @@ int atouuid(const char *str, ble_uuid_t uuid)
         "%2hhx%2hhx%2hhx%2hhx%2hhx%2hhx",
         &uuid[15], &uuid[14], &uuid[13], &uuid[12],
         &uuid[11], &uuid[10],
-        &uuid[9], &uuid[8], 
+        &uuid[9], &uuid[8],
         &uuid[7], &uuid[6],
         &uuid[5], &uuid[4], &uuid[3], &uuid[2], &uuid[1], &uuid[0]) != 16;
 }
@@ -893,9 +893,8 @@ ble_characteristic_t *ble_device_characteristic_find_by_uuid(
 
     for (cur = service->characteristics; cur; cur = cur->next)
     {
-        if (ble_uuid_equal(cur->uuid, uuid) && cur->index == index){
+        if (ble_uuid_equal(cur->uuid, uuid) && cur->index == index)
             break;
-        }
     }
 
     return cur;
@@ -939,15 +938,14 @@ int ble_device_info_get_by_conn_id_handle(ble_device_t *list, uint16_t conn_id,
 {
     if (!(*device = ble_device_find_by_conn_id(list, conn_id)))
         return -1;
-    
+
     for (*service = (*device)->services; *service; *service = (*service)->next)
     {
         for (*characteristic = (*service)->characteristics; *characteristic;
             *characteristic = (*characteristic)->next)
         {
-            if ((*characteristic)->handle == handle){
+            if ((*characteristic)->handle == handle)
                 return 0;
-            }
         }
     }
 

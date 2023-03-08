@@ -411,7 +411,7 @@ static void ble_update_cache(ble_device_t *dev)
         free(db);
         return;
     }
-    
+
     /* Find all characteristics and cache them */
     for (i = 0; i < count; i++)
     {
@@ -460,7 +460,7 @@ int ble_foreach_characteristic(mac_addr_t mac,
         for (characteristic = service->characteristics; characteristic;
             characteristic = characteristic->next)
         {
-            cb(mac, service->uuid, characteristic->uuid, 
+            cb(mac, service->uuid, characteristic->uuid,
                 characteristic->index, characteristic->properties);
         }
     }
@@ -504,7 +504,8 @@ Exit:
 }
 
 int ble_characteristic_write(mac_addr_t mac, ble_uuid_t service_uuid,
-    ble_uuid_t characteristic_uuid, uint8_t index, const uint8_t *value, size_t value_len)
+    ble_uuid_t characteristic_uuid, uint8_t index, const uint8_t *value,
+    size_t value_len)
 {
     ble_device_t *device;
     ble_service_t *service;
@@ -710,7 +711,7 @@ static void gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 
         if (param->scan_rst.search_evt != ESP_GAP_SEARCH_INQ_RES_EVT)
             break;
-            
+
         /* Check if this device is a broadcaster */
         broadcaster_ops_t *broadcaster_ops = broadcaster_ops_get(
             param->scan_rst.ble_adv, param->scan_rst.adv_data_len);
@@ -939,7 +940,8 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
             &characteristic) && on_device_characteristic_value_cb)
         {
             on_device_characteristic_value_cb(device->mac, service->uuid,
-                characteristic->uuid, characteristic->index, param->read.value, param->read.value_len);
+                characteristic->uuid, characteristic->index,
+                param->read.value, param->read.value_len);
         }
 
         xSemaphoreGiveRecursive(devices_list_semaphore);
