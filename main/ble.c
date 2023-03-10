@@ -426,7 +426,7 @@ static void ble_update_cache(ble_device_t *dev)
 
             uint8_t index = 0;
 
-            for (ble_characteristic_t *cur = service->characteristics; cur; cur = cur->next){
+            for (ble_characteristic_t *cur = service->characteristics; cur != NULL; cur = cur->next){
                 if (ble_uuid_equal(cur->uuid, characteristic_uuid)){
                     index++;
                 }
