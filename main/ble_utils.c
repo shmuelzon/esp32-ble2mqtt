@@ -276,7 +276,7 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
     characteristic_type_t *types = ble_get_characteristic_types(uuid);
     static char buf[1024];
     char *p = buf;
-    int i = 0;
+    int i = 0, j;
 
     /* A note from the Bluetooth specification:
      * If a format is not a whole number of octets, then the data shall be
@@ -298,8 +298,8 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
             p += sprintf(p, "%s,", data[i] & 0x01 ? "true" : "false");
             break;
         case CHAR_TYPE_2BIT:
-            for(; i < len; i++){
-                for(int8_t j = 6; j >= 0; j -= 2){
+            for (; i < len; i++){
+                for (j = 6; j >= 0; j -= 2){
                     p += sprintf(p, "%" PRIu8 ",", (data[i] >> j) & 0b11);
                 }
             }
