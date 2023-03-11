@@ -299,7 +299,7 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
             break;
         case CHAR_TYPE_2BIT:
             for (; i < len; i++){
-                for (j = 6; j >= 0; j -= 2){
+                for (j = 0; j < 8; j += 2){
                     p += sprintf(p, "%" PRIu8 ",", (data[i] >> j) & 0b11);
                 }
             }
@@ -482,7 +482,7 @@ uint8_t *atochar(ble_uuid_t uuid, const char *data, size_t len, size_t *ret_len)
                 }
 
                 uint8_t data = strtoul(val, NULL, 10) & 0b11;
-                uint8_t index_in_byte = 6 - ((current % 4) * 2);
+                uint8_t index_in_byte = ((current % 4) * 2);
                 
                 *p |= (data << index_in_byte);
 
@@ -492,7 +492,7 @@ uint8_t *atochar(ble_uuid_t uuid, const char *data, size_t len, size_t *ret_len)
 
             // fill up remaining bits with 0b11
             while((current % 4) != 0){
-                uint8_t index_in_byte = 6 - ((current % 4) * 2);
+                uint8_t index_in_byte = ((current % 4) * 2);
                 *p |= (0b11 << index_in_byte);
                 current++;
             }
