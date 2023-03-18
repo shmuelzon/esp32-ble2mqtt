@@ -276,7 +276,7 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
     characteristic_type_t *types = ble_get_characteristic_types(uuid);
     static char buf[1024];
     char *p = buf;
-    int i = 0, j;
+    int i = 0;
 
     /* A note from the Bluetooth specification:
      * If a format is not a whole number of octets, then the data shall be
@@ -298,12 +298,15 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
             p += sprintf(p, "%s,", data[i] & 0x01 ? "true" : "false");
             break;
         case CHAR_TYPE_2BIT:
-            for (; i < len; i++){
-                for (j = 0; j < 8; j += 2){
+        {
+            int j;
+
+            for (; i < len; i++) {
+                for (j = 0; j < 8; j += 2)
                     p += sprintf(p, "%" PRIu8 ",", (data[i] >> j) & 0b11);
-                }
             }
             break;
+        }
         case CHAR_TYPE_4BIT:
         case CHAR_TYPE_NIBBLE:
             p += sprintf(p, "%" PRIu8 ",", data[i] & 0x0F);
@@ -472,32 +475,24 @@ uint8_t *atochar(ble_uuid_t uuid, const char *data, size_t len, size_t *ret_len)
             p += 1;
             break;
         case CHAR_TYPE_2BIT:
-            uint8_t current = 0;
+        {
+            uint8_t crumb_index = 0;
+
             p--;
-
-            while(val != NULL){
-                if((current % 4) == 0){
-                    p++;
-                    *p = 0;
-                }
-
-                uint8_t data = strtoul(val, NULL, 10) & 0b11;
-                uint8_t index_in_byte = ((current % 4) * 2);
+            while (val != NULL) {
+                uint8_t crumb = strtoul(val, NULL, 10) & 0b11;
                 
-                *p |= (data << index_in_byte);
+                if ((crumb_index % 4) == 0)
+                    *(++p) = 0;
+                *p |= (crumb << ((crumb_index % 4) * 2));
 
                 val = strtok(NULL, ",");
-                current++;
+                crumb_index++;
             }
 
-            // fill up remaining bits with 0b11
-            while((current % 4) != 0){
-                uint8_t index_in_byte = ((current % 4) * 2);
-                *p |= (0b11 << index_in_byte);
-                current++;
-            }
-            p++;
+            p += 1;
             break;
+        }
         case CHAR_TYPE_4BIT:
         case CHAR_TYPE_NIBBLE:
             *p = strtoul(val, NULL, 10) & 0x0F;
