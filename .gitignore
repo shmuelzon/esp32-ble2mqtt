@@ -1,6 +1,10 @@
 # Outputs
 build/
 
+# Build depdendencies
+dependencies.lock
+managed_components
+
 # Local files
 sdkconfig
 sdkconfig.old
