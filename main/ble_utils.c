@@ -306,8 +306,15 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
             p += sprintf(p, "%s,", data[i] & 0x01 ? "true" : "false");
             break;
         case CHAR_TYPE_2BIT:
-            p += sprintf(p, "%" PRIu8 ",", data[i] & 0x03);
+        {
+            int j;
+
+            for (; i < len; i++) {
+                for (j = 0; j < 8; j += 2)
+                    p += sprintf(p, "%" PRIu8 ",", (data[i] >> j) & 0b11);
+            }
             break;
+        }
         case CHAR_TYPE_4BIT:
         case CHAR_TYPE_NIBBLE:
             p += sprintf(p, "%" PRIu8 ",", data[i] & 0x0F);
@@ -476,9 +483,24 @@ uint8_t *atochar(ble_uuid_t uuid, const char *data, size_t len, size_t *ret_len)
             p += 1;
             break;
         case CHAR_TYPE_2BIT:
-            *p = strtoul(val, NULL, 10) & 0x03;
+        {
+            uint8_t crumb_index = 0;
+
+            p--;
+            while (val != NULL) {
+                uint8_t crumb = strtoul(val, NULL, 10) & 0b11;
+                
+                if ((crumb_index % 4) == 0)
+                    *(++p) = 0;
+                *p |= (crumb << ((crumb_index % 4) * 2));
+
+                val = strtok(NULL, ",");
+                crumb_index++;
+            }
+
             p += 1;
             break;
+        }
         case CHAR_TYPE_4BIT:
         case CHAR_TYPE_NIBBLE:
             *p = strtoul(val, NULL, 10) & 0x0F;
