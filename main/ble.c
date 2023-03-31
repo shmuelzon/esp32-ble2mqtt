@@ -426,11 +426,12 @@ static void ble_update_cache(ble_device_t *dev)
 
             uint8_t index = 0;
 
-            for (ble_characteristic_t *cur = service->characteristics; cur != NULL; cur = cur->next){
-                if (ble_uuid_equal(cur->uuid, characteristic_uuid)){
+            for (ble_characteristic_t *cur = service->characteristics;
+                cur != NULL; cur = cur->next)
+            {
+                if (ble_uuid_equal(cur->uuid, characteristic_uuid))
                     index++;
-                }
-            };
+            }
 
             characteristic = ble_device_characteristic_add(service,
                 characteristic_uuid, index, db[i].attribute_handle,

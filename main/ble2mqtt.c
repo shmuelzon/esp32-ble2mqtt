@@ -394,9 +394,8 @@ static char *ble_topic(mac_addr_t mac, ble_uuid_t service_uuid,
     i += snprintf(topic + i, MAX_TOPIC_LEN - i, "/%s",
         ble_characteristic_name_get(characteristic_uuid));
 
-    if(index > 0){
+    if (index > 0)
         i += snprintf(topic + i, MAX_TOPIC_LEN - i, "_%u", index);
-    }
 
     return topic;
 }
@@ -418,7 +417,8 @@ static void ble_on_mqtt_get(const char *topic, const uint8_t *payload,
     ESP_LOGD(TAG, "Got read request: %s", topic);
     mqtt_ctx_t *data = (mqtt_ctx_t *)ctx;
 
-    ble_characteristic_read(data->mac, data->service, data->characteristic, data->index);
+    ble_characteristic_read(data->mac, data->service, data->characteristic,
+        data->index);
 }
 
 static void ble_on_mqtt_set(const char *topic, const uint8_t *payload,
@@ -430,11 +430,12 @@ static void ble_on_mqtt_set(const char *topic, const uint8_t *payload,
     uint8_t *buf = atochar(data->characteristic, (const char *)payload,
         len, &buf_len);
 
-    ble_characteristic_write(data->mac, data->service, data->characteristic, data->index,
-        buf, buf_len);
+    ble_characteristic_write(data->mac, data->service, data->characteristic,
+        data->index, buf, buf_len);
 
     /* Issue a read request to get latest value */
-    ble_characteristic_read(data->mac, data->service, data->characteristic, data->index);
+    ble_characteristic_read(data->mac, data->service, data->characteristic,
+        data->index);
 }
 
 static void _ble_on_mqtt_get(const char *topic, const uint8_t *payload,
@@ -445,9 +446,10 @@ static void _ble_on_mqtt_set(const char *topic, const uint8_t *payload,
 static void ble_on_characteristic_found(mac_addr_t mac, ble_uuid_t service_uuid,
     ble_uuid_t characteristic_uuid, uint8_t index, uint8_t properties)
 {
-    ESP_LOGI(TAG, "Found new characteristic: service: " UUID_FMT
+    ESP_LOGD(TAG, "Found new characteristic: service: " UUID_FMT
       ", characteristic: " UUID_FMT ", index: %u, properties: 0x%x",
-      UUID_PARAM(service_uuid), UUID_PARAM(characteristic_uuid), index, properties);
+      UUID_PARAM(service_uuid), UUID_PARAM(characteristic_uuid), index,
+      properties);
     char *topic;
 
     if (!config_ble_service_should_include(uuidtoa(service_uuid)) ||
@@ -490,8 +492,8 @@ static void ble_on_device_services_discovered(mac_addr_t mac)
 }
 
 static void ble_on_device_characteristic_value(mac_addr_t mac,
-    ble_uuid_t service, ble_uuid_t characteristic, uint8_t index, uint8_t *value,
-    size_t value_len)
+    ble_uuid_t service, ble_uuid_t characteristic, uint8_t index,
+    uint8_t *value, size_t value_len)
 {
     char *topic = ble_topic(mac, service, characteristic, index);
     char *payload = chartoa(characteristic, value, value_len);
