@@ -76,6 +76,9 @@ static ble_on_device_characteristic_value_cb_t
     on_device_characteristic_value_cb = NULL;
 static ble_on_passkey_requested_cb_t on_passkey_requested_cb = NULL;
 
+static uint8_t write_buf_len;
+static uint8_t write_buf[20];
+
 void ble_set_on_broadcaster_discovered_cb(ble_on_broadcaster_discovered_cb_t cb)
 {
     on_broadcaster_discovered_cb = cb;
@@ -179,6 +182,8 @@ static inline void ble_operation_perform(ble_operation_t *operation)
             ESP_GATT_WRITE_TYPE_NO_RSP, ESP_GATT_AUTH_REQ_NONE);
         break;
     case BLE_OPERATION_TYPE_WRITE_CHAR:
+        memcpy(write_buf, operation->value, operation->len);
+        write_buf_len = operation->len;
         esp_ble_gattc_write_char_descr(g_gattc_if, operation->device->conn_id,
             operation->characteristic->client_config_handle, operation->len,
             operation->value,
@@ -954,12 +959,47 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
         }
         break;
     case ESP_GATTC_WRITE_DESCR_EVT:
+        ble_device_t *device;
+
+        need_dequeue = 1;
+
+        xSemaphoreTakeRecursive(devices_list_semaphore, portMAX_DELAY);
+
+        if (!(device = ble_device_find_by_conn_id(devices_list,
+            param->read.conn_id)))
+        {
+            xSemaphoreGiveRecursive(devices_list_semaphore);
+            break;
+        }
         if (param->write.status != ESP_GATT_OK)
         {
-            ESP_LOGE(TAG,
-                "Failed writing characteristic descriptor, status = 0x%x",
-                param->write.status);
+            /* Check if authentication/encryption is needed */
+            if (param->read.status == ESP_GATT_INSUF_AUTHENTICATION ||
+                param->read.status == ESP_GATT_INSUF_ENCRYPTION)
+            {
+                if (!device->is_authenticating)
+                {
+                    device->is_authenticating = 1;
+                    esp_ble_set_encryption(device->mac,
+                        ESP_BLE_SEC_ENCRYPT_MITM);
+                }
+                /* Try again */
+                esp_ble_gattc_write_char_descr(g_gattc_if, param->write.conn_id,
+                    param->write.handle, write_buf_len,
+                    write_buf,
+                    ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
+                need_dequeue = 0;
+            }
+            else
+            {
+                ESP_LOGE(TAG,
+                    "Failed writing characteristic descriptor, status = 0x%x",
+                    param->write.status);
+            }
+
         }
+        
+        xSemaphoreGiveRecursive(devices_list_semaphore);
         break;
     case ESP_GATTC_REG_FOR_NOTIFY_EVT:
         if (param->reg_for_notify.status != ESP_GATT_OK)
