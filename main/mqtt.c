@@ -109,7 +109,7 @@ static mqtt_publications_t *mqtt_publication_add(mqtt_publications_t **list,
     const char *topic, uint8_t *payload, size_t len, int qos, uint8_t retained)
 {   
     mqtt_publications_t *pub;
-    for(pub = list; pub; pub = pub->next){
+    for(pub = *list; pub; pub = pub->next){
         if(strcmp(topic, pub->topic) == 0){
             free(pub->payload);
             break;

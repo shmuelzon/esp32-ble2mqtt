@@ -366,6 +366,20 @@ uint8_t config_mqtt_retained_get(void)
     return cJSON_IsTrue(retain);
 }
 
+uint8_t config_ble_keep_connection_without_mqtt_get(void){
+    cJSON *ble = cJSON_GetObjectItemCaseSensitive(config, "ble");
+    cJSON *keep = cJSON_GetObjectItemCaseSensitive(ble, "retain_connection_without_mqtt");
+
+    return cJSON_IsTrue(keep);
+}
+
+uint8_t config_publish_values_without_mqtt_mqtt_get(void){
+    cJSON *ble = cJSON_GetObjectItemCaseSensitive(config, "ble");
+    cJSON *publish = cJSON_GetObjectItemCaseSensitive(ble, "publish_values_without_mqtt");
+
+    return cJSON_IsTrue(publish);
+}
+
 const char *config_mqtt_topics_get(const char *param_name, const char *def)
 {
     cJSON *mqtt = cJSON_GetObjectItemCaseSensitive(config, "mqtt");

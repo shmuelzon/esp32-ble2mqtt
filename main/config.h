@@ -37,6 +37,8 @@ const char *config_mqtt_username_get(void);
 const char *config_mqtt_password_get(void);
 uint8_t config_mqtt_qos_get(void);
 uint8_t config_mqtt_retained_get(void);
+uint8_t config_ble_keep_connection_without_mqtt_get(void);
+uint8_t config_publish_values_without_mqtt_mqtt_get(void);
 const char *config_mqtt_prefix_get(void);
 const char *config_mqtt_get_suffix_get(void);
 const char *config_mqtt_set_suffix_get(void);
