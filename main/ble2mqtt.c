@@ -33,6 +33,7 @@ typedef struct {
     mac_addr_t mac;
     ble_uuid_t service;
     ble_uuid_t characteristic;
+    uint8_t index;
 } mqtt_ctx_t;
 
 static const char *device_name_get(void)
@@ -307,7 +308,7 @@ static void ble_publish_connected(mac_addr_t mac, uint8_t is_connected)
     if (is_connected)
     {
         const char *device_name = device_name_get();
-        
+
         /* Subscribe for other devices claiming this device is disconnected */
         mqtt_subscribe(topic, config_mqtt_qos_get(), _ble_on_mqtt_connected_cb,
             strdup(mactoa(mac)), free);
@@ -320,13 +321,14 @@ static void ble_publish_connected(mac_addr_t mac, uint8_t is_connected)
 }
 
 static mqtt_ctx_t *ble_ctx_gen(mac_addr_t mac, ble_uuid_t service,
-    ble_uuid_t characteristic)
+    ble_uuid_t characteristic, uint8_t index)
 {
     mqtt_ctx_t *ctx = malloc(sizeof(mqtt_ctx_t));
 
     memcpy(ctx->mac, mac, sizeof(mac_addr_t));
     memcpy(ctx->service, service, sizeof(ble_uuid_t));
     memcpy(ctx->characteristic, characteristic, sizeof(ble_uuid_t));
+    ctx->index = index;
 
     return ctx;
 }
@@ -389,16 +391,19 @@ static char *ble_topic_suffix(char *base, uint8_t is_get)
 }
 
 static char *ble_topic(mac_addr_t mac, ble_uuid_t service_uuid,
-    ble_uuid_t characteristic_uuid)
+    ble_uuid_t characteristic_uuid, uint8_t index)
 {
     static char topic[MAX_TOPIC_LEN];
-    int i;
+    int i = 0;
 
-    i = snprintf(topic, MAX_TOPIC_LEN, "%s" MAC_FMT "/%s",
+    i += snprintf(topic + i, MAX_TOPIC_LEN, "%s" MAC_FMT "/%s",
         config_mqtt_prefix_get(), MAC_PARAM(mac),
         ble_service_name_get(service_uuid));
-    snprintf(topic + i, MAX_TOPIC_LEN - i, "/%s",
+    i += snprintf(topic + i, MAX_TOPIC_LEN - i, "/%s",
         ble_characteristic_name_get(characteristic_uuid));
+
+    if (index > 0)
+        i += snprintf(topic + i, MAX_TOPIC_LEN - i, "_%u", index);
 
     return topic;
 }
@@ -420,7 +425,8 @@ static void ble_on_mqtt_get(const char *topic, const uint8_t *payload,
     ESP_LOGD(TAG, "Got read request: %s", topic);
     mqtt_ctx_t *data = (mqtt_ctx_t *)ctx;
 
-    ble_characteristic_read(data->mac, data->service, data->characteristic);
+    ble_characteristic_read(data->mac, data->service, data->characteristic,
+        data->index);
 }
 
 static void ble_on_mqtt_set(const char *topic, const uint8_t *payload,
@@ -433,10 +439,11 @@ static void ble_on_mqtt_set(const char *topic, const uint8_t *payload,
         len, &buf_len);
 
     ble_characteristic_write(data->mac, data->service, data->characteristic,
-        buf, buf_len);
+        data->index, buf, buf_len);
 
     /* Issue a read request to get latest value */
-    ble_characteristic_read(data->mac, data->service, data->characteristic);
+    ble_characteristic_read(data->mac, data->service, data->characteristic,
+        data->index);
 }
 
 static void _ble_on_mqtt_get(const char *topic, const uint8_t *payload,
@@ -445,11 +452,12 @@ static void _ble_on_mqtt_set(const char *topic, const uint8_t *payload,
     size_t len, void *ctx);
 
 static void ble_on_characteristic_found(mac_addr_t mac, ble_uuid_t service_uuid,
-    ble_uuid_t characteristic_uuid, uint8_t properties)
+    ble_uuid_t characteristic_uuid, uint8_t index, uint8_t properties)
 {
     ESP_LOGD(TAG, "Found new characteristic: service: " UUID_FMT
-      ", characteristic: " UUID_FMT ", properties: 0x%x",
-      UUID_PARAM(service_uuid), UUID_PARAM(characteristic_uuid), properties);
+      ", characteristic: " UUID_FMT ", index: %u, properties: 0x%x",
+      UUID_PARAM(service_uuid), UUID_PARAM(characteristic_uuid), index,
+      properties);
     char *topic;
 
     if (!config_ble_service_should_include(uuidtoa(service_uuid)) ||
@@ -458,15 +466,15 @@ static void ble_on_characteristic_found(mac_addr_t mac, ble_uuid_t service_uuid,
         return;
     }
 
-    topic = ble_topic(mac, service_uuid, characteristic_uuid);
+    topic = ble_topic(mac, service_uuid, characteristic_uuid, index);
 
     /* Characteristic is readable */
     if (properties & CHAR_PROP_READ)
     {
         mqtt_subscribe(ble_topic_suffix(topic, 1), config_mqtt_qos_get(),
             _ble_on_mqtt_get, ble_ctx_gen(mac, service_uuid,
-            characteristic_uuid), free);
-        ble_characteristic_read(mac, service_uuid, characteristic_uuid);
+            characteristic_uuid, index), free);
+        ble_characteristic_read(mac, service_uuid, characteristic_uuid, index);
     }
 
     /* Characteristic is writable */
@@ -474,14 +482,14 @@ static void ble_on_characteristic_found(mac_addr_t mac, ble_uuid_t service_uuid,
     {
         mqtt_subscribe(ble_topic_suffix(topic, 0), config_mqtt_qos_get(),
             _ble_on_mqtt_set, ble_ctx_gen(mac, service_uuid,
-            characteristic_uuid), free);
+            characteristic_uuid, index), free);
     }
 
     /* Characteristic can notify / indicate on changes */
     if (properties & (CHAR_PROP_NOTIFY | CHAR_PROP_INDICATE))
     {
         ble_characteristic_notify_register(mac, service_uuid,
-            characteristic_uuid);
+            characteristic_uuid, index);
     }
 }
 
@@ -492,14 +500,14 @@ static void ble_on_device_services_discovered(mac_addr_t mac)
 }
 
 static void ble_on_device_characteristic_value(mac_addr_t mac,
-    ble_uuid_t service, ble_uuid_t characteristic, uint8_t *value,
-    size_t value_len)
+    ble_uuid_t service, ble_uuid_t characteristic, uint8_t index,
+    uint8_t *value, size_t value_len)
 {
     if(!mqtt_connected && !ble_publish_values_without_mqtt){
         // ignore values, no mqtt
         return;
     }
-    char *topic = ble_topic(mac, service, characteristic);
+    char *topic = ble_topic(mac, service, characteristic, index);
     char *payload = chartoa(characteristic, value, value_len);
     size_t payload_len = strlen(payload);
 
@@ -577,6 +585,7 @@ typedef struct {
             mac_addr_t mac;
             ble_uuid_t service;
             ble_uuid_t characteristic;
+            uint8_t index;
             uint8_t *value;
             size_t value_len;
         } ble_device_characteristic_value;
@@ -647,6 +656,7 @@ static void ble2mqtt_handle_event(event_t *event)
             event->ble_device_characteristic_value.mac,
             event->ble_device_characteristic_value.service,
             event->ble_device_characteristic_value.characteristic,
+            event->ble_device_characteristic_value.index,
             event->ble_device_characteristic_value.value,
             event->ble_device_characteristic_value.value_len);
         free(event->ble_device_characteristic_value.value);
@@ -870,8 +880,8 @@ static void _ble_on_device_services_discovered(mac_addr_t mac)
 }
 
 static void _ble_on_device_characteristic_value(mac_addr_t mac,
-    ble_uuid_t service, ble_uuid_t characteristic, uint8_t *value,
-    size_t value_len)
+    ble_uuid_t service, ble_uuid_t characteristic, uint8_t index,
+    uint8_t *value, size_t value_len)
 {
     event_t *event = malloc(sizeof(*event));
 
@@ -884,6 +894,7 @@ static void _ble_on_device_characteristic_value(mac_addr_t mac,
     event->ble_device_characteristic_value.value = malloc(value_len);
     memcpy(event->ble_device_characteristic_value.value, value, value_len);
     event->ble_device_characteristic_value.value_len = value_len;
+    event->ble_device_characteristic_value.index = index;
 
     ESP_LOGD(TAG, "Queuing event BLE_DEVICE_CHARACTERISTIC_VALUE (" MAC_FMT ", "
         UUID_FMT ", %p, %u)", MAC_PARAM(mac), UUID_PARAM(characteristic), value,
