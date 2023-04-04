@@ -25,6 +25,10 @@
 #define MAX_TOPIC_LEN 256
 static const char *TAG = "BLE2MQTT";
 
+static bool ble_keep_connection_without_mqtt = false;
+static bool ble_publish_values_without_mqtt = false;
+static bool mqtt_connected = false;
+
 typedef struct {
     mac_addr_t mac;
     ble_uuid_t service;
@@ -206,8 +210,10 @@ static void management_unsubscribe(void)
 
 static void cleanup(void)
 {
-    ble_disconnect_all();
-    ble_scan_stop();
+    if(!ble_keep_connection_without_mqtt){
+        ble_disconnect_all();
+        ble_scan_stop();
+    }
     ota_unsubscribe();
     management_unsubscribe();
 }
@@ -242,6 +248,7 @@ static void network_on_disconnected(void)
 static void mqtt_on_connected(void)
 {
     ESP_LOGI(TAG, "Connected to MQTT, scanning for BLE devices");
+    mqtt_connected = true;
     self_publish();
     ota_subscribe();
     management_subscribe();
@@ -251,6 +258,7 @@ static void mqtt_on_connected(void)
 static void mqtt_on_disconnected(void)
 {
     static uint8_t num_disconnections = 0;
+    mqtt_connected = false;
 
     ESP_LOGI(TAG, "Disconnected from MQTT, stopping BLE");
     cleanup();
@@ -487,6 +495,10 @@ static void ble_on_device_characteristic_value(mac_addr_t mac,
     ble_uuid_t service, ble_uuid_t characteristic, uint8_t *value,
     size_t value_len)
 {
+    if(!mqtt_connected && !ble_publish_values_without_mqtt){
+        // ignore values, no mqtt
+        return;
+    }
     char *topic = ble_topic(mac, service, characteristic);
     char *payload = chartoa(characteristic, value, value_len);
     size_t payload_len = strlen(payload);
