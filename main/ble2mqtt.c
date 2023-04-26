@@ -25,7 +25,7 @@
 #define MAX_TOPIC_LEN 256
 static const char *TAG = "BLE2MQTT";
 
-static bool ble_keep_connection_without_mqtt = false;
+static bool ble_retain_connection_without_mqtt = false;
 static bool ble_publish_values_without_mqtt = false;
 static bool mqtt_connected = false;
 
@@ -211,7 +211,7 @@ static void management_unsubscribe(void)
 
 static void cleanup(void)
 {
-    if(!ble_keep_connection_without_mqtt){
+    if(!ble_retain_connection_without_mqtt){
         ble_disconnect_all();
         ble_scan_stop();
     }
@@ -999,6 +999,9 @@ void app_main()
         wifi_start_ap(device_name_get(), NULL);
         return;
     }
+
+    ble_retain_connection_without_mqtt = config_ble_retain_connection_without_mqtt_get();
+    ble_publish_values_without_mqtt = config_ble_publish_values_without_mqtt_get();
 
     switch (config_network_type_get())
     {
