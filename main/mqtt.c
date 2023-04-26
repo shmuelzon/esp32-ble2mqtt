@@ -108,8 +108,10 @@ static void mqtt_subscription_remove(mqtt_subscription_t **list,
 static mqtt_publications_t *mqtt_publication_add(mqtt_publications_t **list,
     const char *topic, uint8_t *payload, size_t len, int qos, uint8_t retained)
 {   
+    // not initializing to NULL since the following loop will leave it at NULL
+    // when there is no match
     mqtt_publications_t *pub;
-    for(pub = *list; pub; pub = pub->next){
+    for(pub = *list; pub != NULL; pub = pub->next){
         if(strcmp(topic, pub->topic) == 0){
             free(pub->payload);
             break;
@@ -117,7 +119,7 @@ static mqtt_publications_t *mqtt_publication_add(mqtt_publications_t **list,
     }
 
     if(pub == NULL){
-        mqtt_publications_t *pub = malloc(sizeof(*pub));
+        pub = malloc(sizeof(mqtt_publications_t));
         pub->topic = strdup(topic);
         pub->next = *list;
         *list = pub;
