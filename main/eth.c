@@ -16,7 +16,9 @@ static const char *TAG = "Ethernet";
 static eth_on_connected_cb_t on_connected_cb = NULL;
 static eth_on_disconnected_cb_t on_disconnected_cb = NULL;
 static char *eth_hostname = NULL;
+#if CONFIG_ETH_USE_ESP32_EMAC
 static esp_netif_t *eth_netif = NULL;
+#endif
 
 void eth_set_on_connected_cb(eth_on_connected_cb_t cb)
 {
