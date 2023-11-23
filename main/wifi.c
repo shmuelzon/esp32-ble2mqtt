@@ -141,7 +141,11 @@ int wifi_connect(const char *ssid, const char *password,
     const char *eap_username, const char *eap_password,
     const char *ca_cert, const char *client_cert, const char *client_key)
 {
-    wifi_config_t wifi_config = {};
+    wifi_config_t wifi_config = {
+        .sta = {
+            .scan_method = WIFI_ALL_CHANNEL_SCAN,
+        }
+    };
     strncpy((char *)wifi_config.sta.ssid, ssid, 32);
     if (password)
         strncpy((char *)wifi_config.sta.password, password, 64);
