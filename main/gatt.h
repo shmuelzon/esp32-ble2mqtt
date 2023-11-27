@@ -31,7 +31,8 @@ typedef enum {
     CHAR_TYPE_UINT48,
     CHAR_TYPE_UINT8,
     CHAR_TYPE_UTF8S,
-    CHAR_TYPE_VARIABLE
+    CHAR_TYPE_VARIABLE,
+    CHAR_TYPE_HEX
 } characteristic_type_t;
 
 typedef struct {
