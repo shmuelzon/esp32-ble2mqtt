@@ -162,7 +162,7 @@ int mqtt_subscribe(const char *topic, int qos, mqtt_on_message_received_cb_t cb,
         return -1;
 
     ESP_LOGD(TAG, "Subscribing to %s", topic);
-    if (esp_mqtt_client_subscribe(mqtt_handle, topic, qos) < 0)
+    if (esp_mqtt_client_subscribe_single(mqtt_handle, topic, qos) < 0)
     {
         ESP_LOGE(TAG, "Failed subscribing to %s", topic);
         return -1;
