@@ -21,7 +21,7 @@ jobs:
       - name: ESP-IDF Build
         uses: espressif/esp-idf-ci-action@v1.1.0
         with:
-          esp_idf_version: v5.0
+          esp_idf_version: v5.2.1
           command: idf.py image
 
       - name: Upload Application Image
