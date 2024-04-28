@@ -763,12 +763,90 @@ static broadcaster_ops_t atc1441_temp_hum_ops = {
     .metadata_get = atc1441_temp_hum_metadata_get,
 };
 
+/* PVVX Firmware for the Xiaomi Thermometer LYWSD03MMC Temperature and
+ * Humidity Sensor, see: https://github.com/pvvx/ATC_MiThermometer */
+
+#define PVVX_TEMP_HUM_SERVICE_UUID 0x181A
+
+typedef struct {
+//    uint16_t not_used;
+    uint16_t service_uuid;
+    mac_addr_t mac;
+    int16_t temp;
+    uint16_t humid;
+    uint16_t battery_mv;
+    uint8_t battery_percent;
+    uint8_t message_counter;
+    uint8_t flags;
+} __attribute__((packed)) pvvx_temp_hum_t;
+
+static pvvx_temp_hum_t *pvvx_temp_hum_data_get(uint8_t *adv_data,
+    uint8_t adv_data_len, uint8_t *pvvx_temp_hum_len)
+{
+    uint8_t len;
+    uint8_t *data = esp_ble_resolve_adv_data(adv_data,
+        ESP_BLE_AD_TYPE_SERVICE_DATA, &len);
+
+    if (pvvx_temp_hum_len)
+        *pvvx_temp_hum_len = len;
+
+    return (pvvx_temp_hum_t *)data;
+}
+static int pvvx_temp_hum_is_broadcaster(uint8_t *adv_data,
+    size_t adv_data_len)
+{
+    uint8_t len;
+    pvvx_temp_hum_t *pvvx_data = pvvx_temp_hum_data_get(adv_data,
+        adv_data_len, &len);
+
+    if (len < sizeof(pvvx_temp_hum_t) ||
+        le16toh(pvvx_data->service_uuid) != PVVX_TEMP_HUM_SERVICE_UUID)
+    {
+        return 0;
+    }
+
+    return 1;
+}
+
+static void pvvx_temp_hum_metadata_get(uint8_t *adv_data,
+    size_t adv_data_len, int rssi, broadcaster_meta_data_cb_t cb, void *ctx)
+{
+    char s[32];
+    uint8_t len;
+    pvvx_temp_hum_t *pvvx_data = pvvx_temp_hum_data_get(adv_data,
+        adv_data_len, &len);
+
+    cb("MACAddress", _mactoa(pvvx_data->mac), ctx);
+
+    sprintf(s, "%hhu", pvvx_data->message_counter);
+    cb("MessageCounter", s, ctx);
+
+    sprintf(s, "%.2f", pvvx_data->temp / 100.0);
+    cb("Temperature", s, ctx);
+
+    sprintf(s, "%.2f", pvvx_data->humid / 100.0);
+    cb("Humidity", s, ctx);
+
+    sprintf(s, "%u", pvvx_data->battery_percent);
+    cb("BatteryLevel", s, ctx);
+
+    sprintf(s, "%.3f", pvvx_data->battery_mv / 1000.0 );
+    cb("BatteryVolts", s, ctx);
+}
+
+static broadcaster_ops_t pvvx_temp_hum_ops = {
+    .name = "PVVX",
+    .is_broadcaster = pvvx_temp_hum_is_broadcaster,
+    .metadata_get = pvvx_temp_hum_metadata_get,
+};
+
 /* Common */
 static broadcaster_ops_t *broadcaster_ops[] = {
     &ibeacon_ops,
     &eddystone_ops,
     &mijia_sensor_ops,
     &beewi_smart_door_ops,
+    &pvvx_temp_hum_ops,
     &atc1441_temp_hum_ops,
     NULL
 };
