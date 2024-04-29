@@ -769,7 +769,6 @@ static broadcaster_ops_t atc1441_temp_hum_ops = {
 #define PVVX_TEMP_HUM_SERVICE_UUID 0x181A
 
 typedef struct {
-//    uint16_t not_used;
     uint16_t service_uuid;
     mac_addr_t mac;
     int16_t temp;
