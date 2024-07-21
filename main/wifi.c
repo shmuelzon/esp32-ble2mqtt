@@ -1,9 +1,9 @@
 #include "wifi.h"
+#include <esp_eap_client.h>
 #include <esp_err.h>
 #include <esp_event.h>
 #include <esp_log.h>
 #include <esp_wifi.h>
-#include <esp_wpa2.h>
 #include <arpa/inet.h>
 #include <inttypes.h>
 #include <string.h>
@@ -156,28 +156,29 @@ int wifi_connect(const char *ssid, const char *password,
     {
         if (ca_cert)
         {
-            ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_ca_cert((uint8_t *)ca_cert,
+            ESP_ERROR_CHECK(esp_eap_client_set_ca_cert((uint8_t *)ca_cert,
                 strlen(ca_cert)));
         }
         if (client_cert)
         {
-            ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_cert_key((uint8_t *)client_cert,
-                strlen(client_cert), (uint8_t *)client_key,
-                client_key ? strlen(client_key) : 0, NULL, 0));
+            ESP_ERROR_CHECK(esp_eap_client_set_certificate_and_key(
+                (uint8_t *)client_cert, strlen(client_cert),
+                (uint8_t *)client_key, client_key ? strlen(client_key) : 0,
+                NULL, 0));
         }
         if (eap_identity)
         {
-            ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_identity((uint8_t *)eap_identity,
+            ESP_ERROR_CHECK(esp_eap_client_set_identity((uint8_t *)eap_identity,
                 strlen(eap_identity)));
         }
         if (eap_method == EAP_PEAP || eap_method == EAP_TTLS)
         {
             if (eap_username || eap_password)
             {
-                ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_username((uint8_t *)eap_username,
-                    strlen(eap_username)));
-                ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_password((uint8_t *)eap_password,
-                    strlen(eap_password)));
+                ESP_ERROR_CHECK(esp_eap_client_set_username(
+                    (uint8_t *)eap_username, strlen(eap_username)));
+                ESP_ERROR_CHECK(esp_eap_client_set_password(
+                    (uint8_t *)eap_password, strlen(eap_password)));
             }
             else
             {
@@ -185,7 +186,7 @@ int wifi_connect(const char *ssid, const char *password,
                     "Tunneled TLS or Protected EAP");
             }
         }
-        ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_enable());
+        ESP_ERROR_CHECK(esp_wifi_sta_enterprise_enable());
     }
     ESP_LOGI(TAG, "Connecting to SSID %s", wifi_config.sta.ssid);
     ESP_ERROR_CHECK(esp_wifi_start());

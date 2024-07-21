@@ -5,7 +5,6 @@ execute_process(
     OUTPUT_VARIABLE PROJECT_VER
     OUTPUT_STRIP_TRAILING_WHITESPACE)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-add_compile_definitions(BTA_GATTC_NOTIF_REG_MAX=32)
 
 project(ble2mqtt)
 

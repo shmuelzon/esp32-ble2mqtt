@@ -2,7 +2,7 @@
 
 This project is a BLE to MQTT bridge, i.e. it exposes BLE GATT characteristics
 as MQTT topics for bidirectional communication. It's developed for the ESP32 SoC
-and is based on [ESP-IDF](https://github.com/espressif/esp-idf) release v5.0.
+and is based on [ESP-IDF](https://github.com/espressif/esp-idf) release v5.2.1.
 Note that using any other ESP-IDF version might not be stable or even compile.
 
 For example, if a device with a MAC address of `a0:e6:f8:50:72:53` exposes the
