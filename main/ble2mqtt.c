@@ -705,7 +705,7 @@ static int start_ble2mqtt_task(void)
         return -1;
 
     if (xTaskCreatePinnedToCore(ble2mqtt_task, "ble2mqtt_task", 4096, NULL, 5,
-        NULL, 1) != pdPASS)
+        NULL, CONFIG_BLE2MQTT_PINNED_TO_CORE) != pdPASS)
     {
         return -1;
     }
