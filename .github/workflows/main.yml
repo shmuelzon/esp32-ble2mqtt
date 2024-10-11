@@ -25,19 +25,19 @@ jobs:
           command: idf.py image
 
       - name: Upload Application Image
-        uses: actions/upload-artifact@v2.2.4
+        uses: actions/upload-artifact@v4
         with:
           name: Application
           path: build/ble2mqtt.bin
 
       - name: Upload Filesystem Image
-        uses: actions/upload-artifact@v2.2.4
+        uses: actions/upload-artifact@v4
         with:
           name: File System
           path: build/fs_0.bin
 
       - name: Upload Full Flash Image
-        uses: actions/upload-artifact@v2.2.4
+        uses: actions/upload-artifact@v4
         with:
           name: Full Flash Image
           path: build/ble2mqtt-full.bin
