@@ -6,12 +6,20 @@ on:
   pull_request:
     branches: [ master ]
   release:
-    types: [ published ]
+    types: [ created ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        esp-variant:
+          - esp32
+          - esp32-s3
+          - esp32-c3
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -22,22 +30,32 @@ jobs:
         uses: espressif/esp-idf-ci-action@v1.1.0
         with:
           esp_idf_version: v5.2.1
-          command: idf.py image
+          command: |
+            idf.py set-target ${{ matrix.esp-variant }}
+            idf.py image
 
       - name: Upload Application Image
         uses: actions/upload-artifact@v4
         with:
-          name: Application
+          name: Application (${{ matrix.esp-variant }})
           path: build/ble2mqtt.bin
 
       - name: Upload Filesystem Image
         uses: actions/upload-artifact@v4
         with:
-          name: File System
+          name: File System (${{ matrix.esp-variant }})
           path: build/fs_0.bin
 
       - name: Upload Full Flash Image
         uses: actions/upload-artifact@v4
         with:
-          name: Full Flash Image
+          name: Full Flash Image (${{ matrix.esp-variant }})
           path: build/ble2mqtt-full.bin
+
+      - name: Upload Release
+        if: github.event_name == 'release' && github.event.action == 'created'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${GITHUB_REF#refs/tags/} build/ble2mqtt-full.bin#ble2mqtt-full.${{ matrix.esp-variant }}.bin
+          gh release upload ${GITHUB_REF#refs/tags/} build/ble2mqtt.bin#ble2mqtt.${{ matrix.esp-variant }}.bin
