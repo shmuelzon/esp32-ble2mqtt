@@ -1,0 +1,6 @@
+menu "BLE2MQTT"
+    config BLE2MQTT_PINNED_TO_CORE
+        int
+        default 1 if !FREERTOS_UNICORE
+        default 0
+endmenu

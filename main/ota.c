@@ -237,7 +237,8 @@ int ota_download(ota_type_t type, const char *url, ota_on_completed_cb_t cb)
     ctx->url = strdup(url);
     ctx->on_completed_cb = cb;
 
-    xTaskCreatePinnedToCore(ota_task, "ota_task", 8192, ctx, 5, NULL, 1);
+    xTaskCreatePinnedToCore(ota_task, "ota_task", 8192, ctx, 5, NULL,
+        CONFIG_BLE2MQTT_PINNED_TO_CORE);
 
     return 0;
 }
