@@ -615,6 +615,81 @@ static broadcaster_ops_t mijia_sensor_ops = {
     .metadata_get = mijia_sensor_metadata_get,
 };
 
+/* Typhoon TB002 BlueWeather Temp+Humi sensor
+ */
+#define TB002_SENSOR_SERVICE_UUID 0xFE00
+
+typedef struct {
+    uint16_t hCompId;
+    uint8_t  bUnk1;
+    uint16_t hTemp;
+    uint16_t hUnk2;
+    uint16_t hHumi;
+    uint16_t hUnk3;
+    uint16_t hBatt;
+    uint16_t hUnk4;
+    uint16_t hUnk5;
+} __attribute__((packed)) tb002_data_t;
+
+static tb002_data_t *tb002_sensor_data_get(uint8_t *adv_data,
+    uint8_t adv_data_len, uint8_t *tb002_sensor_len)
+{
+    uint8_t len;
+    uint8_t *data = esp_ble_resolve_adv_data(adv_data,
+        ESP_BLE_AD_MANUFACTURER_SPECIFIC_TYPE, &len);
+
+    if (tb002_sensor_len)
+        *tb002_sensor_len = len;
+
+    return (tb002_data_t *)data;
+}
+static int tb002_sensor_is_broadcaster(uint8_t *adv_data, size_t adv_data_len)
+{
+    uint8_t len;
+
+    uint16_t *pSvc16 = (uint16_t*)esp_ble_resolve_adv_data(adv_data,
+        ESP_BLE_AD_TYPE_16SRV_PART, &len);
+    if (len != 2 || le16toh(*pSvc16) != TB002_SENSOR_SERVICE_UUID)
+    {
+        return 0;
+    }
+
+    tb002_data_t *tb002_sensor = tb002_sensor_data_get(adv_data,
+        adv_data_len, &len);
+    if (!tb002_sensor || len != sizeof(tb002_data_t))
+    {
+        return 0;
+    }
+
+    return 1;
+}
+static void tb002_sensor_metadata_get(uint8_t *adv_data, size_t adv_data_len,
+    int rssi, broadcaster_meta_data_cb_t cb, void *ctx)
+{
+    uint8_t len;
+    tb002_data_t *tb002_sensor = tb002_sensor_data_get(adv_data,
+        adv_data_len, &len);
+
+    double tempC = (be16toh(tb002_sensor->hTemp)-1599.425)*0.03122;
+    double humi  = (be16toh(tb002_sensor->hHumi)-550.0)*0.0668;
+    uint16_t batt = be16toh(tb002_sensor->hBatt);
+
+    char buf[16];
+    snprintf(buf, 16, "%.1f", tempC);
+    cb("Temperature", buf, ctx);
+    snprintf(buf, 16, "%.1f", humi);
+    cb("Humidity", buf, ctx);
+    snprintf(buf, 16, "%d", batt);
+    cb("Battery", buf, ctx);
+
+}
+static broadcaster_ops_t tb002_sensor_ops = {
+    .name = "Typhoon TB002",
+    .is_broadcaster = tb002_sensor_is_broadcaster,
+    .metadata_get = tb002_sensor_metadata_get,
+};
+
+
 /* Beewi Smart Door
  * Note that the Beewi Smart Door sensor is also connectable. When connected, it
  * provides battery information and door status history (without the current
@@ -693,7 +768,6 @@ static broadcaster_ops_t beewi_smart_door_ops = {
 #define ATC1441_TEMP_HUM_SERVICE_UUID 0x181A
 
 typedef struct {
-    uint16_t not_used;
     uint16_t service_uuid;
     mac_addr_t mac;
     int16_t temp;
@@ -739,7 +813,7 @@ static void atc1441_temp_hum_metadata_get(uint8_t *adv_data,
     atc1441_temp_hum_t *atc1441_data = atc1441_temp_hum_data_get(adv_data,
         adv_data_len, &len);
 
-    cb("MACAddress", _mactoa(atc1441_data->mac), ctx);
+    cb("MACAddress", mactoa(atc1441_data->mac), ctx);
 
     sprintf(s, "%hhu", atc1441_data->message_counter);
     cb("MessageCounter", s, ctx);
@@ -765,6 +839,7 @@ static broadcaster_ops_t atc1441_temp_hum_ops = {
 
 /* Common */
 static broadcaster_ops_t *broadcaster_ops[] = {
+    &tb002_sensor_ops,
     &ibeacon_ops,
     &eddystone_ops,
     &mijia_sensor_ops,
