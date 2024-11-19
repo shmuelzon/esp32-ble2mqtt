@@ -204,6 +204,7 @@ static characteristic_type_t ble_atotype(const char *type)
         { "reg-cert-data-list", CHAR_TYPE_REG_CERT_DATA_LIST },
         { "variable", CHAR_TYPE_VARIABLE },
         { "gatt-uuid", CHAR_TYPE_GATT_UUID },
+        { "hex", CHAR_TYPE_HEX },
         { NULL, CHAR_TYPE_UNKNOWN },
     };
 
@@ -250,6 +251,7 @@ static size_t ble_type_size(characteristic_type_t type)
     case CHAR_TYPE_UINT16:
     case CHAR_TYPE_SINT16:
     case CHAR_TYPE_SFLOAT:
+    case CHAR_TYPE_HEX:
         return 2;
     case CHAR_TYPE_24BIT:
     case CHAR_TYPE_UINT24:
@@ -302,6 +304,9 @@ char *chartoa(ble_uuid_t uuid, const uint8_t *data, size_t len)
 
         switch (*types)
         {
+        case CHAR_TYPE_HEX:
+            p += sprintf(p, "%2hhx,", data[i]); 
+            break;
         case CHAR_TYPE_BOOLEAN:
             p += sprintf(p, "%s,", data[i] & 0x01 ? "true" : "false");
             break;
@@ -478,6 +483,10 @@ uint8_t *atochar(ble_uuid_t uuid, const char *data, size_t len, size_t *ret_len)
     {
         switch (*types)
         {
+        case CHAR_TYPE_HEX:
+            sscanf(val, "%2hhx", p);
+            p += 1;
+            break;
         case CHAR_TYPE_BOOLEAN:
             *p = !strcmp(val, "true") ? 1 : 0;
             p += 1;
