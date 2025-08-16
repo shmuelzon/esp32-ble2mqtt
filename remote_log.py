@@ -33,12 +33,12 @@ def log_listener(args):
     sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
   sock.bind(('', args.port))
 
-  print('Listening on port %d' % args.port)
+  print('Listening on port %d' % args.port, flush=True)
   while True:
     try:
       data, addr = sock.recvfrom(2048)
       print('%s (%s): %s' % (datetime.datetime.now(), get_hostname(addr),
-        data.decode('utf-8', 'ignore')), end='')
+        data.decode('utf-8', 'ignore')), end='', flush=True)
     except KeyboardInterrupt:
       break;
 
