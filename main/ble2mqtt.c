@@ -340,11 +340,14 @@ static void ble_on_broadcaster_discovered(mac_addr_t mac, uint8_t *adv_data,
 {
     char *mac_str = strdup(mactoa(mac));
     char rssi_str[6];
-    ESP_LOGI(TAG, "Discovered %s broadcaster", ops->name);
 
     ble_on_broadcaster_metadata("Type", ops->name, mac_str);
     sprintf(rssi_str, "%d", rssi);
     ble_on_broadcaster_metadata("RSSI", rssi_str, mac_str);
+
+    ESP_LOGI(TAG, "Discovered %s broadcaster, device: " MAC_FMT " (RSSI: %s)", ops->name, 
+        MAC_PARAM(mac), rssi_str);
+
     ops->metadata_get(adv_data, adv_data_len, rssi, ble_on_broadcaster_metadata,
         mac_str);
 
@@ -355,8 +358,8 @@ static void ble_on_device_discovered(mac_addr_t mac, int rssi)
 {
     uint8_t connect = config_ble_should_connect(mactoa(mac));
 
-    ESP_LOGI(TAG, "Discovered BLE device: " MAC_FMT " (RSSI: %d), %sconnecting",
-        MAC_PARAM(mac), rssi, connect ? "" : "not ");
+    ESP_LOGI(TAG, "Discovered BLE device: " MAC_FMT " (RSSI: %d), %s",
+        MAC_PARAM(mac), rssi, connect ? "connecting" : "not connecting (filtered)");
 
     if (!connect)
         return;
