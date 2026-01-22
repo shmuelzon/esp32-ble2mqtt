@@ -79,7 +79,7 @@ def get_local_ip():
 
 def on_mqtt_connect(client, args, flags, rc):
   client.publish('%s/OTA/%s' % (args.target, args.name),
-    'http://%s:%d/' % (get_local_ip(), args.port))
+    'http://%s:%d/' % (args.address, args.port))
   client.disconnect()
 
 def main():
@@ -94,6 +94,8 @@ def main():
     help='Host to upgrade. If left empty, will upgrade all hosts')
   parser.add_argument('-p', '--port', type=int, default=8000,
     help='HTTP server port')
+  parser.add_argument('-a', '--address',
+    help='HTTP server address (default = local ip)')
   parser.add_argument('--mqtt-broker-server',
     help='MQTT broker server for initiating upgrade procedure. '
       'Default taken from configuration file')
@@ -118,6 +120,9 @@ def main():
     args.mqtt_broker_username = config['mqtt']['server']['username']
   if args.mqtt_broker_password is None and 'password' in config['mqtt']['server']:
     args.mqtt_broker_password = config['mqtt']['server']['password']
+
+  if args.address is None:
+    args.address = get_local_ip()
 
   # Connect to MQTT
   mqttc = mqtt.Client(userdata=args)
